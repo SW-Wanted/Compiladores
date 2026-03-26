@@ -12,7 +12,7 @@ O analisa léxico deve ler um arquivo de entrada com os seguintes símbolos vál
 
 - Letra: a, b...z, A, B..Z
 - Digito: 0, 1..9
-- Simbolos Especiais: (|)|{|}[|]|etc
+- Simbolos Especiais: (|)|{|}|[|]|etc
 - Operador Relacionais: <|>|<=|>=|etc
 - Palavras Reservadas: while | if | etc.
 - Pontuações: , | : | ; | . | etc
@@ -45,3 +45,30 @@ O analisa léxico deve ler um arquivo de entrada com os seguintes símbolos vál
 * Enviar o Analisador Léxico até 14/04/2026 até as 23:50
 * Defesa no dia 16/04/2023;
 
+# Análise Léxica
+## 1º Abrir o ficheiro (com o código fonte)
+- C: Fopen
+- Java: File reader
+## 2º Ler caractere a caractere (no código-fonte)
+C: Caractere a Caractere
+Java: Ler toda linha
+
+## 3º Validar o símbolo (caractere) com o auxílio do Autômato finito
+- [i|n|t]
+
+- 4º Dar o padrão (token) ou lexema montado
+### int - Palavra reservada 
+- int
+- token_int
+- Keywords_int
+
+
+## 5º Guardar o token, lexema  e linha na tabela de símbolo
+
+| Lexema | Token | Linha |
+| :--- | :--- | :--- |
+| int|  | Linha |
+| x | Token | Linha |
+| = | Token | Linha |
+| 10 | Token | Linha |
+| ; | Token | Linha |
