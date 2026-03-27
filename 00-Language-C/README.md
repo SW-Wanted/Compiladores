@@ -10,7 +10,7 @@ A primeira parte do trabalho consiste em cada estudante **escolher** e **fazer**
 * Quais os IDEs da linguagem escolhida
 * Tipos de dados da linguagem
 * Algumas palavras reservadas
-* Estrutur de controlo (seleção, repetição)
+* Estrutura de controlo (seleção, repetição)
 * Variáveis compostas homogéneas
 * Variáveis compostas heterogéneas
 * Função e procedimento (qual é a diferença na linguagem escolhida)
