@@ -1,4 +1,9 @@
-*Trabalho sobre Análise Léxica (Analisador Léxico): (primeira fase de um compilador)*
+# ANÁLISE LÉXICA
+*   2.1. Modelação de reconhecimento de frase (ER e Autômatos finitos).
+*   2.2. Recuperação de erros; 
+*   2.3. Sistemas de entrada; 
+*   2.4. Linguagens; 
+*   2.5. Implementação de um analisador léxico.
 
 # Enunciado
 
@@ -33,7 +38,7 @@ O analisa léxico deve ler um arquivo de entrada com os seguintes símbolos vál
 - Um **manual do programador** (**cinco** a **dez páginas**) em um arquivo chamado `mp.doc`, contendo a **lista completa dos tokens utilizados**, o **autómato finito determinístico**, **expressões regulares** e o **pseudo-código de cada função (classe ou método)**.
 - É obrigatório o uso de conceito de máquina de estado na implementação do Léxico.
 
-# Obsevações:
+# Observações:
 - As linguagens aceitas para a implementação são: C, C++, JAVA, C#, entre outras linguagens.
 - É proibido o uso da linguagem Python tanto para linguagem de estudo como linguagem de implementação:
 - Só é permitido trabalhar com linguagens compiladas;
@@ -45,25 +50,25 @@ O analisa léxico deve ler um arquivo de entrada com os seguintes símbolos vál
 * Enviar o Analisador Léxico até 14/04/2026 até as 23:50
 * Defesa no dia 16/04/2023;
 
-# Análise Léxica
-## 1º Abrir o ficheiro (com o código fonte)
+## Análise Léxica
+### 1º Abrir o ficheiro (com o código fonte)
 - C: Fopen
 - Java: File reader
-## 2º Ler caractere a caractere (no código-fonte)
+### 2º Ler caractere a caractere (no código-fonte)
 C: Caractere a Caractere
 Java: Ler toda linha
 
-## 3º Validar o símbolo (caractere) com o auxílio do Autômato finito
+### 3º Validar o símbolo (caractere) com o auxílio do Autômato finito
 - [i|n|t]
 
 - 4º Dar o padrão (token) ou lexema montado
-### int - Palavra reservada 
+#### int - Palavra reservada 
 - int
 - token_int
 - Keywords_int
 
 
-## 5º Guardar o token, lexema  e linha na tabela de símbolo
+### 5º Guardar o token, lexema  e linha na tabela de símbolo
 
 | Lexema | Token | Linha |
 | :--- | :--- | :--- |
