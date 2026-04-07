@@ -9,7 +9,7 @@
 
 O objectivo do trabalho é construir um analisador léxico para uma linguagem de programação de alto nível. (Subconjuunto da sua linguagem de estudo).
 
-O programa deve ler um programa-fonte de um subconjunto da sua linguagem de estudo e gravar todos os toekn e lexema encontrados em uma **tabela de símbolos**.
+O programa deve ler um programa-fonte de um subconjunto da sua linguagem de estudo e gravar todos os tokens e lexema encontrados em uma **tabela de símbolos**.
 
 O programa (**analisador Léxico**) deve conter uma **função** (**classe** ou **método**) **analex()** que fará análise de todos os símbos do programa-fonte lido pela função (**classe** ou **método**) **ler caractere()** depois de validar o lexema e token e gravar na **tabela de símbolo**.
 
