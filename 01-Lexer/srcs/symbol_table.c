@@ -2,10 +2,6 @@
 #include <stdlib.h>
 #include "symbol_table.h"
 
-/* =========================================================
- *  SYMBOL TABLE IMPLEMENTATION
- * ========================================================= */
-
 void symtable_init(SymbolTable *table)
 {
     table->count = 0;
@@ -20,7 +16,6 @@ void symtable_insert(SymbolTable *table, Token token)
     table->entries[table->count++] = token;
 }
 
-/* Prints the symbol table in a formatted table. */
 void symtable_print(const SymbolTable *table)
 {
     printf("\n");

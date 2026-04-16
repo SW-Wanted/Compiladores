@@ -1,4 +1,4 @@
-// Programa de teste para o analisador léxico
+
 #include <stdio.h>
 
 int soma(int a, int b) {
@@ -20,7 +20,7 @@ int main() {
     while (x > 0) {
         x--;
     }
-
+    
     int resultado = soma(x, 20);
     return 0;
 }

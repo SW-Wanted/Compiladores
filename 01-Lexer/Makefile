@@ -1,6 +1,6 @@
-CC      = gcc
-CFLAGS  = -Wall -Wextra -Iinclude
-SRC     = src/main.c src/lexer.c src/token.c src/symbol_table.c
+CC      = cc
+CFLAGS  = -Wall -Wextra -Werror -Iincludes
+SRC     = srcs/main.c srcs/lexer.c srcs/token.c srcs/symbol_table.c
 TARGET  = lexer
 
 all: $(TARGET)
@@ -13,3 +13,7 @@ test: $(TARGET)
 
 clean:
 	rm -f $(TARGET)
+
+re: clean all
+
+.PHONY: all test clean re

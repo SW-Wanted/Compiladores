@@ -1,19 +1,13 @@
 #include "token.h"
-
-/* =========================================================
- *  Maps a token type integer to a readable string label.
- * ========================================================= */
 const char *token_name(int type)
 {
     switch (type) {
-        /* Literals & Identifiers */
         case TOKEN_IDENTIFIER:     return "IDENTIFIER";
         case TOKEN_INT_LITERAL:    return "INT_LITERAL";
         case TOKEN_FLOAT_LITERAL:  return "FLOAT_LITERAL";
         case TOKEN_CHAR_LITERAL:   return "CHAR_LITERAL";
         case TOKEN_STRING_LITERAL: return "STRING_LITERAL";
 
-        /* Keywords */
         case TOKEN_INT:     return "KW_int";
         case TOKEN_FLOAT:   return "KW_float";
         case TOKEN_CHAR:    return "KW_char";
@@ -29,14 +23,12 @@ const char *token_name(int type)
         case TOKEN_INCLUDE: return "KW_include";
         case TOKEN_DEFINE:  return "KW_define";
 
-        /* Arithmetic */
         case TOKEN_PLUS:    return "OP_PLUS";
         case TOKEN_MINUS:   return "OP_MINUS";
         case TOKEN_STAR:    return "OP_STAR";
         case TOKEN_SLASH:   return "OP_SLASH";
         case TOKEN_PERCENT: return "OP_PERCENT";
 
-        /* Relational */
         case TOKEN_EQ:  return "OP_EQ";
         case TOKEN_NEQ: return "OP_NEQ";
         case TOKEN_LT:  return "OP_LT";
@@ -44,17 +36,14 @@ const char *token_name(int type)
         case TOKEN_LEQ: return "OP_LEQ";
         case TOKEN_GEQ: return "OP_GEQ";
 
-        /* Logical */
         case TOKEN_AND: return "OP_AND";
         case TOKEN_OR:  return "OP_OR";
         case TOKEN_NOT: return "OP_NOT";
 
-        /* Assignment */
         case TOKEN_ASSIGN:       return "OP_ASSIGN";
         case TOKEN_PLUS_ASSIGN:  return "OP_PLUS_ASSIGN";
         case TOKEN_MINUS_ASSIGN: return "OP_MINUS_ASSIGN";
 
-        /* Delimiters */
         case TOKEN_LPAREN:    return "LPAREN";
         case TOKEN_RPAREN:    return "RPAREN";
         case TOKEN_LBRACE:    return "LBRACE";
@@ -68,7 +57,6 @@ const char *token_name(int type)
         case TOKEN_HASH:      return "HASH";
         case TOKEN_AMP:       return "AMP";
 
-        /* Special */
         case TOKEN_EOF:     return "EOF";
         case TOKEN_UNKNOWN: return "UNKNOWN";
 
