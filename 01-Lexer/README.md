@@ -7,7 +7,7 @@
 
 # Enunciado
 
-O objectivo do trabalho é construir um analisador léxico para uma linguagem de programação de alto nível. (Subconjuunto da sua linguagem de estudo).
+O objectivo do trabalho é construir um analisador léxico para uma linguagem de programação de alto nível. (Subconjunto da sua linguagem de estudo).
 
 O programa deve ler um programa-fonte de um subconjunto da sua linguagem de estudo e gravar todos os tokens e lexema encontrados em uma **tabela de símbolos**.
 
@@ -25,8 +25,8 @@ O analisa léxico deve ler um arquivo de entrada com os seguintes símbolos vál
 
 ## Algumas funções (classe ou método) que os senhores deverão criar:
 
-- **Analex()**: função (**classe** ou **método**) que implementa os autómatos finitos determinísticos e faz a validação do lexema e tken.
-- **Ler caractere()**: esta função (**classe** ou **método**) deve fazer a leitura caractere a caractere e entrega o caractere (símbolo) para a função (**classe** ou **método**) Analex() aonde o símbolo é analiado e validado.
+- **Analex()**: função (**classe** ou **método**) que implementa os autómatos finitos determinísticos e faz a validação do lexema e token.
+- **Ler caractere()**: esta função (**classe** ou **método**) deve fazer a leitura caractere a caractere e entrega o caractere (símbolo) para a função (**classe** ou **método**) Analex() onde o símbolo é analiado e validado.
 - **Volta caractere()** esta função (**classe** ou **método**) será sempre usado quando for lido "outro" no diagrama de transição.
 - **Gravar Token Lexema()**: esta função (**classe** ou **método**) terá o papel de gravar ou guardar o token e lexema na tabela de símbolos.
 
@@ -39,8 +39,8 @@ O analisa léxico deve ler um arquivo de entrada com os seguintes símbolos vál
 - É obrigatório o uso de conceito de máquina de estado na implementação do Léxico.
 
 # Observações:
-- As linguagens aceitas para a implementação são: C, C++, JAVA, C#, entre outras linguagens.
-- É proibido o uso da linguagem Python tanto para linguagem de estudo como linguagem de implementação:
+- As linguagens aceitas para a implementação são: `C`, `C++`, `Java`, `C#`, entre outras linguagens.
+- É proibido o uso da linguagem `Python` tanto para linguagem de estudo como linguagem de implementação:
 - Só é permitido trabalhar com linguagens compiladas;
 - Entrega atrasada implica em 2% de desconto do valor total da nota por dia útil de atraso;
 - A entrega consiste de defesa (apresentação) na data previamente marcada em horário de aula e entregue os manuais (usuário e programador)
@@ -49,31 +49,3 @@ O analisa léxico deve ler um arquivo de entrada com os seguintes símbolos vál
 * Envio do autómato Finito Determinístico até dia 14/04/2026 testado na ferramenta JFLAP até as 23:50 (enviar também todas as expressões regulares):
 * Enviar o Analisador Léxico até 14/04/2026 até as 23:50
 * Defesa no dia 16/04/2023;
-
-## Análise Léxica
-### 1º Abrir o ficheiro (com o código fonte)
-- C: Fopen
-- Java: File reader
-### 2º Ler caractere a caractere (no código-fonte)
-C: Caractere a Caractere
-Java: Ler toda linha
-
-### 3º Validar o símbolo (caractere) com o auxílio do Autômato finito
-- [i|n|t]
-
-- 4º Dar o padrão (token) ou lexema montado
-#### int - Palavra reservada 
-- int
-- token_int
-- Keywords_int
-
-
-### 5º Guardar o token, lexema  e linha na tabela de símbolo
-
-| Lexema | Token | Linha |
-| :--- | :--- | :--- |
-| int|  | Linha |
-| x | Token | Linha |
-| = | Token | Linha |
-| 10 | Token | Linha |
-| ; | Token | Linha |
