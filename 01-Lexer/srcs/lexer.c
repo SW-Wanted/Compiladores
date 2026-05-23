@@ -125,14 +125,25 @@ static Token scan_number(Lexer *lexer)
 static Token scan_char_literal(Lexer *lexer)
 {
     char buf[8];
+    int  len  = 0;
     int  line = lexer->line;
-
-    buf[0] = '\'';
-    buf[1] = ler_caractere(lexer);
-    if (buf[1] == '\\')
-        buf[2] = ler_caractere(lexer);
-    buf[3] = ler_caractere(lexer);
-    buf[4] = '\0';
+    char c = ler_caractere(lexer);
+    
+    if (len < (int)sizeof(buf) - 1) buf[len++] = c;
+    c = ler_caractere(lexer);
+    if (c == '\\') {
+        if (len < (int)sizeof(buf) - 1) buf[len++] = c;
+        c = ler_caractere(lexer);
+        if (len < (int)sizeof(buf) - 1) buf[len++] = c;
+        c = ler_caractere(lexer);
+    } else {
+        if (len < (int)sizeof(buf) - 1) buf[len++] = c;
+        c = ler_caractere(lexer);
+    }
+    if (c == '\'') {
+        if (len < (int)sizeof(buf) - 1) buf[len++] = c;
+    }
+    buf[len] = '\0';
 
     return make_token(TOKEN_CHAR_LITERAL, buf, line);
 }
@@ -200,7 +211,6 @@ Token analex(Lexer *lexer)
 
     if (c == '\'') {
         volta_caractere(lexer);
-        ler_caractere(lexer);
         return scan_char_literal(lexer);
     }
 
