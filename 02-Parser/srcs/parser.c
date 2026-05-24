@@ -407,6 +407,8 @@ static ASTNode *parse_declaracao_typedef(Parser *parser)
 
 static ASTNode *parse_type_specifier(Parser *parser)
 {
+    /* Accept common qualifiers (const, static, signed, unsigned, volatile, extern)
+       before a base type (e.g., 'static char', 'const int'). */
     if (parser->current.type == TOKEN_INT) {
         return parser_expect(parser, TOKEN_INT, AST_TYPE_SPECIFIER);
     } else if (parser->current.type == TOKEN_FLOAT) {
@@ -420,6 +422,15 @@ static ASTNode *parse_type_specifier(Parser *parser)
         ast_add_child(node, parse_nome_ou_corpo_struct(parser));
         return node;
     } else if (parser->current.type == TOKEN_IDENTIFIER) {
+        /* treat certain identifiers as qualifiers that precede a real type */
+        const char *lex = parser->current.lexeme;
+        if (strcmp(lex, "const") == 0 || strcmp(lex, "static") == 0 ||
+            strcmp(lex, "unsigned") == 0 || strcmp(lex, "signed") == 0 ||
+            strcmp(lex, "volatile") == 0 || strcmp(lex, "extern") == 0) {
+            ASTNode *qual = parser_expect(parser, TOKEN_IDENTIFIER, AST_TYPE_SPECIFIER);
+            ast_add_child(qual, parse_type_specifier(parser));
+            return qual;
+        }
         return parser_expect(parser, TOKEN_IDENTIFIER, AST_TYPE_SPECIFIER);
     }
     return parser_error(parser, "esperado especificador de tipo");
@@ -744,8 +755,15 @@ static ASTNode *parse_instrucao_for(Parser *parser)
     ASTNode *node = ast_new(AST_FOR_STMT, NULL, -1, -1);
     parser_expect(parser, TOKEN_FOR, AST_IDENTIFIER);
     parser_expect(parser, TOKEN_LPAREN, AST_ERROR);
-    ast_add_child(node, parse_expressao_opcional(parser));
-    parser_expect(parser, TOKEN_SEMICOLON, AST_ERROR);
+    /* init can be an expression or a local declaration (e.g., for (int i = 0; ...)) */
+    if (parser_is_local_declaration_start(parser)) {
+        /* parse_declaracao_variavel_local consumes the terminating semicolon */
+        ast_add_child(node, parse_declaracao_variavel_local(parser));
+    } else {
+        ast_add_child(node, parse_expressao_opcional(parser));
+        parser_expect(parser, TOKEN_SEMICOLON, AST_ERROR);
+    }
+
     ast_add_child(node, parse_expressao_opcional(parser));
     parser_expect(parser, TOKEN_SEMICOLON, AST_ERROR);
     ast_add_child(node, parse_expressao_opcional(parser));

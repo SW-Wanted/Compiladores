@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "parser.h"
 
-static char *read_file(const char *path)
+char *read_file(const char *path)
 {
     FILE *f = fopen(path, "r");
     if (!f) {
