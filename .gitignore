@@ -1,8 +1,21 @@
-.vscode/c_cpp_properties.json
-00-Language-C/automato.jff
-00-Language-C/Compiladores.pptx
-00-Language-C/Language C.pdf
-00-Language-C/Language C.pptx
-00-Language-C/LinguagemC_Compiladores.pptx
-00-Language-C/teste1.txt
+# Editor settings
+.vscode/
+
+# Build artifacts
+*.o
+*.a
+lexer
+parser
+
+# Temporary files
+*~
+*.swp
+*.tmp
+*.bak
+*.DS_Store
+
+# Ignore local build outputs in each phase
 01-Lexer/lexer
+02-Parser/parser
+01-Lexer/liblexer.a
+02-Parser/libparser.a
