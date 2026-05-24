@@ -464,7 +464,7 @@ static ASTNode *parse_declaracao_global(Parser *parser)
 
 static ASTNode *parse_directiva(Parser *parser)
 {
-    parser_expect(parser, TOKEN_HASH, AST_ERROR);
+    parser_free_ast(parser_expect(parser, TOKEN_HASH, AST_ERROR));
     if (parser->current.type == TOKEN_INCLUDE)
         return parse_diretiva_include(parser);
     if (parser->current.type == TOKEN_DEFINE)
@@ -475,7 +475,7 @@ static ASTNode *parse_directiva(Parser *parser)
 static ASTNode *parse_diretiva_include(Parser *parser)
 {
     ASTNode *node = ast_new(AST_DIRECTIVE_INCLUDE, NULL, -1, -1);
-    parser_expect(parser, TOKEN_INCLUDE, AST_IDENTIFIER);
+    parser_free_ast(parser_expect(parser, TOKEN_INCLUDE, AST_IDENTIFIER));
     if (parser->current.type == TOKEN_LT) {
         parser_expect(parser, TOKEN_LT, AST_ERROR);
         ast_add_child(node, parse_nome_ficheiro(parser));
@@ -492,7 +492,7 @@ static ASTNode *parse_diretiva_include(Parser *parser)
 static ASTNode *parse_diretiva_define(Parser *parser)
 {
     ASTNode *node = ast_new(AST_DIRECTIVE_DEFINE, NULL, -1, -1);
-    parser_expect(parser, TOKEN_DEFINE, AST_IDENTIFIER);
+    parser_free_ast(parser_expect(parser, TOKEN_DEFINE, AST_IDENTIFIER));
     ast_add_child(node, parser_expect(parser, TOKEN_IDENTIFIER, AST_IDENTIFIER));
     if (parser->current.type == TOKEN_INT_LITERAL || parser->current.type == TOKEN_FLOAT_LITERAL ||
         parser->current.type == TOKEN_STRING_LITERAL || parser->current.type == TOKEN_IDENTIFIER) {
@@ -517,7 +517,7 @@ static ASTNode *parse_nome_ficheiro(Parser *parser)
 static ASTNode *parse_declaracao_typedef(Parser *parser)
 {
     ASTNode *node = ast_new(AST_TYPEDEF_DECL, NULL, -1, -1);
-    parser_expect(parser, TOKEN_TYPEDEF, AST_IDENTIFIER);
+    parser_free_ast(parser_expect(parser, TOKEN_TYPEDEF, AST_IDENTIFIER));
     ASTNode *type_spec = parse_type_specifier(parser);
     ASTNode *decl = parse_declarator(parser);
     int decl_line = -1, decl_col = -1;
@@ -886,7 +886,7 @@ static ASTNode *parse_instrucao_expressao(Parser *parser)
 static ASTNode *parse_instrucao_if(Parser *parser)
 {
     ASTNode *node = ast_new(AST_IF_STMT, NULL, -1, -1);
-    parser_expect(parser, TOKEN_IF, AST_IDENTIFIER);
+    parser_free_ast(parser_expect(parser, TOKEN_IF, AST_IDENTIFIER));
     parser_expect(parser, TOKEN_LPAREN, AST_ERROR);
     ast_add_child(node, parse_expressao(parser));
     parser_expect(parser, TOKEN_RPAREN, AST_ERROR);
@@ -915,7 +915,7 @@ static ASTNode *parse_ramo_else_opcional(Parser *parser)
 static ASTNode *parse_instrucao_while(Parser *parser)
 {
     ASTNode *node = ast_new(AST_WHILE_STMT, NULL, -1, -1);
-    parser_expect(parser, TOKEN_WHILE, AST_IDENTIFIER);
+    parser_free_ast(parser_expect(parser, TOKEN_WHILE, AST_IDENTIFIER));
     parser_expect(parser, TOKEN_LPAREN, AST_ERROR);
     ast_add_child(node, parse_expressao(parser));
     parser_expect(parser, TOKEN_RPAREN, AST_ERROR);
@@ -931,7 +931,7 @@ static ASTNode *parse_instrucao_while(Parser *parser)
 static ASTNode *parse_instrucao_for(Parser *parser)
 {
     ASTNode *node = ast_new(AST_FOR_STMT, NULL, -1, -1);
-    parser_expect(parser, TOKEN_FOR, AST_IDENTIFIER);
+    parser_free_ast(parser_expect(parser, TOKEN_FOR, AST_IDENTIFIER));
     parser_expect(parser, TOKEN_LPAREN, AST_ERROR);
     /* init can be an expression or a local declaration (e.g., for (int i = 0; ...)) */
     if (parser_is_local_declaration_start(parser)) {
@@ -958,9 +958,9 @@ static ASTNode *parse_instrucao_for(Parser *parser)
 static ASTNode *parse_instrucao_do(Parser *parser)
 {
     ASTNode *node = ast_new(AST_DO_WHILE_STMT, NULL, -1, -1);
-    parser_expect(parser, TOKEN_DO, AST_IDENTIFIER);
+    parser_free_ast(parser_expect(parser, TOKEN_DO, AST_IDENTIFIER));
     ast_add_child(node, parse_instrucao(parser));
-    parser_expect(parser, TOKEN_WHILE, AST_IDENTIFIER);
+    parser_free_ast(parser_expect(parser, TOKEN_WHILE, AST_IDENTIFIER));
     parser_expect(parser, TOKEN_LPAREN, AST_ERROR);
     ast_add_child(node, parse_expressao(parser));
     parser_expect(parser, TOKEN_RPAREN, AST_ERROR);
@@ -971,7 +971,7 @@ static ASTNode *parse_instrucao_do(Parser *parser)
 static ASTNode *parse_instrucao_switch(Parser *parser)
 {
     ASTNode *node = ast_new(AST_SWITCH_STMT, NULL, -1, -1);
-    parser_expect(parser, TOKEN_SWITCH, AST_IDENTIFIER);
+    parser_free_ast(parser_expect(parser, TOKEN_SWITCH, AST_IDENTIFIER));
     parser_expect(parser, TOKEN_LPAREN, AST_ERROR);
     ast_add_child(node, parse_expressao(parser));
     parser_expect(parser, TOKEN_RPAREN, AST_ERROR);
