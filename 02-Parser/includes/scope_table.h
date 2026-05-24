@@ -17,6 +17,8 @@ typedef struct {
     int         type_token;
     int         scope_level;
     int         line;
+    int         column;
+    int         param_count;
 } Symbol;
 
 #define MAX_SCOPE_SYMBOLS 1024

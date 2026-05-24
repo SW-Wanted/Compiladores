@@ -41,14 +41,14 @@ int scope_insert(ScopeTable *table, const Symbol *symbol)
     int start = current_scope_start(table);
     for (int i = start; i < table->count; i++) {
         if (strcmp(table->entries[i].name, symbol->name) == 0)
-            return 0;
+            return -1;
     }
     if (table->count >= MAX_SCOPE_SYMBOLS) {
         fprintf(stderr, "Erro: tabela de escopo cheia\n");
         return -1;
     }
-    table->entries[table->count++] = *symbol;
-    return 1;
+    table->entries[table->count] = *symbol;
+    return table->count++;
 }
 
 Symbol *scope_lookup(ScopeTable *table, const char *name)
@@ -72,24 +72,29 @@ Symbol *scope_lookup_current(ScopeTable *table, const char *name)
 
 void scope_table_print(const ScopeTable *table)
 {
-    printf("\n%-5s %-20s %-10s %-12s %-5s\n", "#", "NOME", "KIND", "TIPO_TOKEN", "ESC");
-    printf("%-5s %-20s %-10s %-12s %-5s\n", "-----", "--------------------", "----------", "------------", "-----");
+    printf("\n%-5s %-20s %-12s %-14s %-5s %-7s %-7s %-7s\n",
+           "#", "LEXEMA", "TIPO", "TIPO_RETORNO", "ESC", "PARAMS", "LINHA", "COLUNA");
+    printf("%-5s %-20s %-12s %-14s %-5s %-7s %-7s %-7s\n",
+           "-----", "--------------------", "------------", "--------------", "-----", "-------", "-------", "-------");
     for (int i = 0; i < table->count; i++) {
         const Symbol *sym = &table->entries[i];
-        const char *kind = "UNKNOWN";
+        const char *kind = "DESCONHECIDO";
         switch (sym->kind) {
-            case SYM_VARIABLE: kind = "VARIABLE"; break;
-            case SYM_FUNCTION: kind = "FUNCTION"; break;
-            case SYM_TYPEDEF: kind = "TYPEDEF"; break;
-            case SYM_PARAM: kind = "PARAM"; break;
+            case SYM_VARIABLE: kind = "VARIAVEL"; break;
+            case SYM_FUNCTION: kind = "FUNCAO"; break;
+            case SYM_TYPEDEF: kind = "TIPODEF"; break;
+            case SYM_PARAM: kind = "PARAMETRO"; break;
             case SYM_ENUM_CONST: kind = "ENUM_CONST"; break;
         }
-        printf("%-5d %-20s %-10s %-12s %-5d\n",
+        printf("%-5d %-20s %-12s %-14s %-5d %-7d %-7d %-7d\n",
                i + 1,
                sym->name,
                kind,
                token_name(sym->type_token),
-               sym->scope_level);
+               sym->scope_level,
+               sym->param_count,
+               sym->line,
+               sym->column);
     }
     printf("\n");
 }

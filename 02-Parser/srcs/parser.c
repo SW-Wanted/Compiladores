@@ -52,9 +52,10 @@ static ASTNode *parse_pos_fixo(Parser *parser);
 static ASTNode *parse_primario(Parser *parser);
 static ASTNode *parse_argumentos_opcionais(Parser *parser);
 static const char *declarator_name(const ASTNode *decl);
+static void declarator_position(const ASTNode *decl, int *line, int *column);
 static int type_specifier_token(const ASTNode *type_spec);
-static void insert_symbol(Parser *parser, const ASTNode *type_spec, const ASTNode *decl, SymbolKind kind, int line);
-static void insert_declarators(Parser *parser, const ASTNode *type_spec, const ASTNode *node, SymbolKind kind, int line);
+static int insert_symbol(Parser *parser, const ASTNode *type_spec, const ASTNode *decl, SymbolKind kind, int line, int column);
+static void insert_declarators(Parser *parser, const ASTNode *type_spec, const ASTNode *node, SymbolKind kind, int line, int column);
 
 static ASTNode *ast_new(ASTNodeKind kind, const char *text, int line, int column)
 {
@@ -245,6 +246,27 @@ static const char *declarator_name(const ASTNode *decl)
     return NULL;
 }
 
+static void declarator_position(const ASTNode *decl, int *line, int *column)
+{
+    if (!decl) {
+        *line = -1;
+        *column = -1;
+        return;
+    }
+    if (decl->kind == AST_IDENTIFIER) {
+        *line = decl->line;
+        *column = decl->column;
+        return;
+    }
+    for (int i = 0; i < decl->child_count; i++) {
+        declarator_position(decl->children[i], line, column);
+        if (*line >= 0 && *column >= 0)
+            return;
+    }
+    *line = -1;
+    *column = -1;
+}
+
 static int type_specifier_token(const ASTNode *type_spec)
 {
     if (!type_spec || !type_spec->text) return TOKEN_IDENTIFIER;
@@ -256,10 +278,10 @@ static int type_specifier_token(const ASTNode *type_spec)
     return TOKEN_IDENTIFIER;
 }
 
-static void insert_symbol(Parser *parser, const ASTNode *type_spec, const ASTNode *decl, SymbolKind kind, int line)
+static int insert_symbol(Parser *parser, const ASTNode *type_spec, const ASTNode *decl, SymbolKind kind, int line, int column)
 {
     const char *name = declarator_name(decl);
-    if (!name) return;
+    if (!name) return -1;
 
     Symbol symbol = {0};
     strncpy(symbol.name, name, MAX_LEXEME_LEN - 1);
@@ -267,20 +289,25 @@ static void insert_symbol(Parser *parser, const ASTNode *type_spec, const ASTNod
     symbol.type_token = type_specifier_token(type_spec);
     symbol.scope_level = parser->scope_table.current_scope;
     symbol.line = line;
-    scope_insert(&parser->scope_table, &symbol);
+    symbol.column = column;
+    symbol.param_count = 0;
+    return scope_insert(&parser->scope_table, &symbol);
 }
 
-static void insert_declarators(Parser *parser, const ASTNode *type_spec, const ASTNode *node, SymbolKind kind, int line)
+static void insert_declarators(Parser *parser, const ASTNode *type_spec, const ASTNode *node, SymbolKind kind, int line, int column)
 {
     if (!node) return;
     if (node->kind == AST_DECLARATOR) {
-        insert_symbol(parser, type_spec, node, kind, line);
+        insert_symbol(parser, type_spec, node, kind, line, column);
         return;
     }
     if (node->kind == AST_DECLARATOR_LIST) {
         for (int i = 0; i < node->child_count; i++) {
-            if (node->children[i]->kind == AST_DECLARATOR)
-                insert_declarators(parser, type_spec, node->children[i], kind, line);
+            if (node->children[i]->kind == AST_DECLARATOR) {
+                int child_line = -1, child_col = -1;
+                declarator_position(node->children[i], &child_line, &child_col);
+                insert_declarators(parser, type_spec, node->children[i], kind, child_line, child_col);
+            }
         }
     }
 }
@@ -367,10 +394,11 @@ static ASTNode *parse_declaracao_typedef(Parser *parser)
 {
     ASTNode *node = ast_new(AST_TYPEDEF_DECL, NULL, -1, -1);
     parser_expect(parser, TOKEN_TYPEDEF, AST_IDENTIFIER);
-    int decl_line = parser->current.line;
     ASTNode *type_spec = parse_type_specifier(parser);
     ASTNode *decl = parse_declarator(parser);
-    insert_symbol(parser, type_spec, decl, SYM_TYPEDEF, decl_line);
+    int decl_line = -1, decl_col = -1;
+    declarator_position(decl, &decl_line, &decl_col);
+    insert_symbol(parser, type_spec, decl, SYM_TYPEDEF, decl_line, decl_col);
     ast_add_child(node, type_spec);
     ast_add_child(node, decl);
     parser_expect(parser, TOKEN_SEMICOLON, AST_ERROR);
@@ -496,7 +524,6 @@ static ASTNode *parse_mais_declaradores(Parser *parser)
 
 static ASTNode *parse_declaracao_geral(Parser *parser)
 {
-    int decl_line = parser->current.line;
     ASTNode *type_spec = parse_type_specifier(parser);
     if (parser->current.type == TOKEN_SEMICOLON) {
         parser_expect(parser, TOKEN_SEMICOLON, AST_ERROR);
@@ -506,14 +533,19 @@ static ASTNode *parse_declaracao_geral(Parser *parser)
     }
 
     ASTNode *decl = parse_declarator(parser);
+    int decl_line = -1, decl_col = -1;
+    declarator_position(decl, &decl_line, &decl_col);
     if (parser->current.type == TOKEN_LPAREN) {
         ASTNode *func = ast_new(AST_FUNC_DECL, NULL, -1, -1);
-        insert_symbol(parser, type_spec, decl, SYM_FUNCTION, decl_line);
+        int func_index = insert_symbol(parser, type_spec, decl, SYM_FUNCTION, decl_line, decl_col);
         scope_enter(&parser->scope_table);
         ast_add_child(func, type_spec);
         ast_add_child(func, decl);
         parser_expect(parser, TOKEN_LPAREN, AST_ERROR);
-        ast_add_child(func, parse_parametros_opcionais(parser));
+        ASTNode *params = parse_parametros_opcionais(parser);
+        if (func_index >= 0 && params)
+            parser->scope_table.entries[func_index].param_count = params->child_count;
+        ast_add_child(func, params);
         parser_expect(parser, TOKEN_RPAREN, AST_ERROR);
         ast_add_child(func, parse_bloco_interno(parser));
         scope_exit(&parser->scope_table);
@@ -521,14 +553,14 @@ static ASTNode *parse_declaracao_geral(Parser *parser)
     }
 
     ASTNode *node = ast_new(AST_VAR_DECL, NULL, -1, -1);
-    insert_symbol(parser, type_spec, decl, SYM_VARIABLE, decl_line);
+    insert_symbol(parser, type_spec, decl, SYM_VARIABLE, decl_line, decl_col);
     ast_add_child(node, type_spec);
     ast_add_child(node, decl);
     ASTNode *init = parse_inicializacao_opcional(parser);
     if (init) ast_add_child(node, init);
     ASTNode *more = parse_mais_declaradores(parser);
     if (more) {
-        insert_declarators(parser, type_spec, more, SYM_VARIABLE, decl_line);
+        insert_declarators(parser, type_spec, more, SYM_VARIABLE, decl_line, decl_col);
         ast_add_child(node, more);
     }
     ASTNode *terminator = parser_expect_semicolon(parser);
@@ -538,10 +570,9 @@ static ASTNode *parse_declaracao_geral(Parser *parser)
 
 static ASTNode *parse_parametros_opcionais(Parser *parser)
 {
-    if (parser->current.type == TOKEN_VOID) {
-        ASTNode *node = ast_new(AST_PARAM_LIST, NULL, -1, -1);
-        ast_add_child(node, parser_expect(parser, TOKEN_VOID, AST_IDENTIFIER));
-        return node;
+    if (parser->current.type == TOKEN_VOID && parser->next.type == TOKEN_RPAREN) {
+        parser_next(parser);
+        return ast_new(AST_PARAM_LIST, NULL, -1, -1);
     }
     if (parser->current.type == TOKEN_RPAREN)
         return ast_new(AST_PARAM_LIST, NULL, -1, -1);
@@ -561,14 +592,15 @@ static ASTNode *parse_lista_parametros(Parser *parser)
 
 static ASTNode *parse_parametro(Parser *parser)
 {
-    int decl_line = parser->current.line;
     ASTNode *node = ast_new(AST_PARAM, NULL, -1, -1);
     ASTNode *type_spec = parse_type_specifier(parser);
     ASTNode *rest = parse_resto_parametro(parser);
     if (rest) {
         ast_add_child(node, type_spec);
         ast_add_child(node, rest);
-        insert_symbol(parser, type_spec, rest, SYM_PARAM, decl_line);
+        int decl_line = -1, decl_col = -1;
+        declarator_position(rest, &decl_line, &decl_col);
+        insert_symbol(parser, type_spec, rest, SYM_PARAM, decl_line, decl_col);
     } else {
         ast_add_child(node, type_spec);
     }
@@ -629,14 +661,16 @@ static ASTNode *parse_declaracao_variavel_local(Parser *parser)
     ASTNode *node = ast_new(AST_VAR_DECL, NULL, -1, -1);
     ASTNode *type_spec = parse_type_specifier(parser);
     ASTNode *decl = parse_declarator(parser);
-    insert_symbol(parser, type_spec, decl, SYM_VARIABLE, decl_line);
+    int decl_col = -1;
+    declarator_position(decl, &decl_line, &decl_col);
+    insert_symbol(parser, type_spec, decl, SYM_VARIABLE, decl_line, decl_col);
     ast_add_child(node, type_spec);
     ast_add_child(node, decl);
     ASTNode *init = parse_inicializacao_opcional(parser);
     if (init) ast_add_child(node, init);
     ASTNode *more = parse_mais_declaradores(parser);
     if (more) {
-        insert_declarators(parser, type_spec, more, SYM_VARIABLE, decl_line);
+        insert_declarators(parser, type_spec, more, SYM_VARIABLE, decl_line, decl_col);
         ast_add_child(node, more);
     }
     ASTNode *terminator = parser_expect_semicolon(parser);
@@ -860,7 +894,8 @@ static ASTNode *parse_multiplicativo(Parser *parser)
 static ASTNode *parse_unario(Parser *parser)
 {
     if (parser->current.type == TOKEN_NOT || parser->current.type == TOKEN_MINUS ||
-        parser->current.type == TOKEN_AMP || parser->current.type == TOKEN_STAR) {
+        parser->current.type == TOKEN_AMP || parser->current.type == TOKEN_STAR ||
+        parser->current.type == TOKEN_PLUS_PLUS || parser->current.type == TOKEN_MINUS_MINUS) {
         char *op = parser_current_lexeme(parser);
         parser_next(parser);
         ASTNode *node = ast_unary(AST_UNARY_EXPR, op, parse_unario(parser));
@@ -899,6 +934,14 @@ static ASTNode *parse_pos_fixo(Parser *parser)
             ast_add_child(member, node);
             ast_add_child(member, parser_expect(parser, TOKEN_IDENTIFIER, AST_IDENTIFIER));
             node = member;
+            continue;
+        }
+        if (parser->current.type == TOKEN_PLUS_PLUS || parser->current.type == TOKEN_MINUS_MINUS) {
+            char *op = parser_current_lexeme(parser);
+            parser_next(parser);
+            ASTNode *un = ast_unary(AST_UNARY_EXPR, op, node);
+            free(op);
+            node = un;
             continue;
         }
         break;
