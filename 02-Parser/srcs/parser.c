@@ -380,7 +380,19 @@ static int insert_symbol(Parser *parser, const ASTNode *type_spec, const ASTNode
     symbol.kind = kind;
     symbol.type_token = type_specifier_token(type_spec);
     symbol.scope_level = parser->scope_table.current_scope;
-    strncpy(symbol.scope_name, scope_current_name(&parser->scope_table), MAX_SCOPE_NAME_LEN - 1);
+    if (kind == SYM_PARAM && parser->pending_scope_name[0]) {
+        strncpy(symbol.scope_name, scope_current_name(&parser->scope_table), MAX_SCOPE_NAME_LEN - 1);
+        symbol.scope_name[MAX_SCOPE_NAME_LEN - 1] = '\0';
+        size_t used = strlen(symbol.scope_name);
+        if (used < MAX_SCOPE_NAME_LEN - 1) {
+            strncat(symbol.scope_name, "::", MAX_SCOPE_NAME_LEN - used - 1);
+            used = strlen(symbol.scope_name);
+            if (used < MAX_SCOPE_NAME_LEN - 1)
+                strncat(symbol.scope_name, parser->pending_scope_name, MAX_SCOPE_NAME_LEN - used - 1);
+        }
+    } else {
+        strncpy(symbol.scope_name, scope_current_name(&parser->scope_table), MAX_SCOPE_NAME_LEN - 1);
+    }
     symbol.line = line;
     symbol.column = column;
     symbol.param_count = 0;
@@ -704,7 +716,11 @@ static ASTNode *parse_declaracao_geral(Parser *parser)
         ast_add_child(func, type_spec);
         ast_add_child(func, decl);
         parser_expect(parser, TOKEN_LPAREN, AST_ERROR);
+        /* mark pending scope so parameters can record parent::function as their scope */
+        parser_set_pending_scope(parser, declarator_name(decl));
         ASTNode *params = parse_parametros_opcionais(parser);
+        /* clear pending scope after parameters processed */
+        parser_clear_pending_scope(parser);
         if (func_index >= 0 && params)
             parser->scope_table.entries[func_index].param_count = params->child_count;
         ast_add_child(func, params);
