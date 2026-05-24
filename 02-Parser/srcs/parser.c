@@ -188,6 +188,19 @@ static int parser_is_local_declaration_start(Parser *parser)
     return 0;
 }
 
+static int parser_is_sync_token(Parser *parser)
+{
+    return parser->current.type == TOKEN_SEMICOLON ||
+           parser->current.type == TOKEN_IF || parser->current.type == TOKEN_WHILE ||
+           parser->current.type == TOKEN_FOR || parser->current.type == TOKEN_DO ||
+           parser->current.type == TOKEN_RETURN || parser->current.type == TOKEN_LBRACE ||
+           parser->current.type == TOKEN_RBRACE || parser->current.type == TOKEN_HASH ||
+           parser->current.type == TOKEN_TYPEDEF || parser->current.type == TOKEN_STRUCT ||
+           parser->current.type == TOKEN_INT || parser->current.type == TOKEN_FLOAT ||
+           parser->current.type == TOKEN_CHAR || parser->current.type == TOKEN_VOID ||
+           parser->current.type == TOKEN_IDENTIFIER || parser->current.type == TOKEN_EOF;
+}
+
 static ASTNode *parser_expect(Parser *parser, int type, ASTNodeKind kind)
 {
     if (parser->current.type == type) {
@@ -200,6 +213,15 @@ static ASTNode *parser_expect(Parser *parser, int type, ASTNodeKind kind)
     ASTNode *error = ast_leaf(AST_ERROR, parser->current.lexeme);
     parser_next(parser);
     return error;
+}
+
+static ASTNode *parser_expect_semicolon(Parser *parser)
+{
+    if (parser->current.type == TOKEN_SEMICOLON)
+        return parser_expect(parser, TOKEN_SEMICOLON, AST_ERROR);
+    if (parser_is_sync_token(parser))
+        return ast_leaf(AST_ERROR, "esperado ';'");
+    return parser_expect(parser, TOKEN_SEMICOLON, AST_ERROR);
 }
 
 static ASTNode *parser_error(const char *message)
@@ -508,7 +530,8 @@ static ASTNode *parse_declaracao_geral(Parser *parser)
         insert_declarators(parser, type_spec, more, SYM_VARIABLE, decl_line);
         ast_add_child(node, more);
     }
-    parser_expect(parser, TOKEN_SEMICOLON, AST_ERROR);
+    ASTNode *terminator = parser_expect_semicolon(parser);
+    if (terminator) ast_add_child(node, terminator);
     return node;
 }
 
@@ -615,7 +638,8 @@ static ASTNode *parse_declaracao_variavel_local(Parser *parser)
         insert_declarators(parser, type_spec, more, SYM_VARIABLE, decl_line);
         ast_add_child(node, more);
     }
-    parser_expect(parser, TOKEN_SEMICOLON, AST_ERROR);
+    ASTNode *terminator = parser_expect_semicolon(parser);
+    if (terminator) ast_add_child(node, terminator);
     return node;
 }
 
@@ -637,9 +661,11 @@ static ASTNode *parse_instrucao(Parser *parser)
 static ASTNode *parse_instrucao_expressao(Parser *parser)
 {
     ASTNode *expr = parse_expressao(parser);
-    parser_expect(parser, TOKEN_SEMICOLON, AST_ERROR);
+    ASTNode *terminator = parser_expect_semicolon(parser);
     ASTNode *node = ast_new(AST_EXPR_STMT, NULL);
     ast_add_child(node, expr);
+    if (terminator)
+        ast_add_child(node, terminator);
     return node;
 }
 
@@ -716,10 +742,11 @@ static ASTNode *parse_expressao_opcional(Parser *parser)
 static ASTNode *parse_instrucao_return(Parser *parser)
 {
     ASTNode *node = ast_new(AST_RETURN_STMT, NULL);
-    parser_expect(parser, TOKEN_RETURN, AST_IDENTIFIER);
+    ast_add_child(node, parser_expect(parser, TOKEN_RETURN, AST_IDENTIFIER));
     ASTNode *expr = parse_expressao_opcional(parser);
     if (expr) ast_add_child(node, expr);
-    parser_expect(parser, TOKEN_SEMICOLON, AST_ERROR);
+    ASTNode *terminator = parser_expect_semicolon(parser);
+    if (terminator) ast_add_child(node, terminator);
     return node;
 }
 
