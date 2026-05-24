@@ -161,6 +161,11 @@ static void parser_next(Parser *parser)
     parser->next = analex(&parser->lexer);
 }
 
+static char *parser_current_lexeme(Parser *parser)
+{
+    return strdup(parser->current.lexeme);
+}
+
 static int parser_match(Parser *parser, int type)
 {
     if (parser->current.type == type) {
@@ -725,10 +730,12 @@ static ASTNode *parse_atribuicao(Parser *parser)
     if (parser->current.type == TOKEN_ASSIGN || parser->current.type == TOKEN_PLUS_ASSIGN ||
         parser->current.type == TOKEN_MINUS_ASSIGN || parser->current.type == TOKEN_STAR_ASSIGN ||
         parser->current.type == TOKEN_SLASH_ASSIGN || parser->current.type == TOKEN_PERCENT_ASSIGN) {
-        const char *op = parser->current.lexeme;
+        char *op = parser_current_lexeme(parser);
         parser_next(parser);
         ASTNode *right = parse_atribuicao(parser);
-        return ast_binary(AST_BINARY_EXPR, op, left, right);
+        ASTNode *node = ast_binary(AST_BINARY_EXPR, op, left, right);
+        free(op);
+        return node;
     }
     return left;
 }
@@ -737,10 +744,12 @@ static ASTNode *parse_logico_ou(Parser *parser)
 {
     ASTNode *left = parse_logico_e(parser);
     while (parser->current.type == TOKEN_OR) {
-        const char *op = parser->current.lexeme;
+        char *op = parser_current_lexeme(parser);
         parser_next(parser);
         ASTNode *right = parse_logico_e(parser);
-        left = ast_binary(AST_BINARY_EXPR, op, left, right);
+        ASTNode *node = ast_binary(AST_BINARY_EXPR, op, left, right);
+        free(op);
+        left = node;
     }
     return left;
 }
@@ -749,10 +758,12 @@ static ASTNode *parse_logico_e(Parser *parser)
 {
     ASTNode *left = parse_igualdade(parser);
     while (parser->current.type == TOKEN_AND) {
-        const char *op = parser->current.lexeme;
+        char *op = parser_current_lexeme(parser);
         parser_next(parser);
         ASTNode *right = parse_igualdade(parser);
-        left = ast_binary(AST_BINARY_EXPR, op, left, right);
+        ASTNode *node = ast_binary(AST_BINARY_EXPR, op, left, right);
+        free(op);
+        left = node;
     }
     return left;
 }
@@ -761,10 +772,12 @@ static ASTNode *parse_igualdade(Parser *parser)
 {
     ASTNode *left = parse_relacional(parser);
     while (parser->current.type == TOKEN_EQ || parser->current.type == TOKEN_NEQ) {
-        const char *op = parser->current.lexeme;
+        char *op = parser_current_lexeme(parser);
         parser_next(parser);
         ASTNode *right = parse_relacional(parser);
-        left = ast_binary(AST_BINARY_EXPR, op, left, right);
+        ASTNode *node = ast_binary(AST_BINARY_EXPR, op, left, right);
+        free(op);
+        left = node;
     }
     return left;
 }
@@ -774,10 +787,12 @@ static ASTNode *parse_relacional(Parser *parser)
     ASTNode *left = parse_aditivo(parser);
     while (parser->current.type == TOKEN_LT || parser->current.type == TOKEN_GT ||
            parser->current.type == TOKEN_LEQ || parser->current.type == TOKEN_GEQ) {
-        const char *op = parser->current.lexeme;
+        char *op = parser_current_lexeme(parser);
         parser_next(parser);
         ASTNode *right = parse_aditivo(parser);
-        left = ast_binary(AST_BINARY_EXPR, op, left, right);
+        ASTNode *node = ast_binary(AST_BINARY_EXPR, op, left, right);
+        free(op);
+        left = node;
     }
     return left;
 }
@@ -786,10 +801,12 @@ static ASTNode *parse_aditivo(Parser *parser)
 {
     ASTNode *left = parse_multiplicativo(parser);
     while (parser->current.type == TOKEN_PLUS || parser->current.type == TOKEN_MINUS) {
-        const char *op = parser->current.lexeme;
+        char *op = parser_current_lexeme(parser);
         parser_next(parser);
         ASTNode *right = parse_multiplicativo(parser);
-        left = ast_binary(AST_BINARY_EXPR, op, left, right);
+        ASTNode *node = ast_binary(AST_BINARY_EXPR, op, left, right);
+        free(op);
+        left = node;
     }
     return left;
 }
@@ -798,10 +815,12 @@ static ASTNode *parse_multiplicativo(Parser *parser)
 {
     ASTNode *left = parse_unario(parser);
     while (parser->current.type == TOKEN_STAR || parser->current.type == TOKEN_SLASH || parser->current.type == TOKEN_PERCENT) {
-        const char *op = parser->current.lexeme;
+        char *op = parser_current_lexeme(parser);
         parser_next(parser);
         ASTNode *right = parse_unario(parser);
-        left = ast_binary(AST_BINARY_EXPR, op, left, right);
+        ASTNode *node = ast_binary(AST_BINARY_EXPR, op, left, right);
+        free(op);
+        left = node;
     }
     return left;
 }
@@ -810,9 +829,11 @@ static ASTNode *parse_unario(Parser *parser)
 {
     if (parser->current.type == TOKEN_NOT || parser->current.type == TOKEN_MINUS ||
         parser->current.type == TOKEN_AMP || parser->current.type == TOKEN_STAR) {
-        const char *op = parser->current.lexeme;
+        char *op = parser_current_lexeme(parser);
         parser_next(parser);
-        return ast_unary(AST_UNARY_EXPR, op, parse_unario(parser));
+        ASTNode *node = ast_unary(AST_UNARY_EXPR, op, parse_unario(parser));
+        free(op);
+        return node;
     }
     return parse_pos_fixo(parser);
 }
