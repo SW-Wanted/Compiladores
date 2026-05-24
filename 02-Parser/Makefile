@@ -1,28 +1,43 @@
 CC       = cc
 CFLAGS   = -Wall -Wextra -Werror -Iincludes -I../01-Lexer/includes
-SRC      = srcs/main.c srcs/parser.c srcs/scope_table.c
-OBJ      = $(SRC:.c=.o)
-TARGET   = parser
-LIBPARSER= libparser.a
+NAME     = parser
+LIB      = libparser.a
 LIBLEXER = ../01-Lexer/liblexer.a
+OBJDIR   = objs
+SRCS     = srcs/main.c srcs/parser.c srcs/scope_table.c
+OBJS     = $(SRCS:srcs/%.c=$(OBJDIR)/%.o)
+MAIN_OBJ = $(OBJDIR)/main.o
+LIB_OBJS = $(filter-out $(MAIN_OBJ),$(OBJS))
+TEST_SRC = tests/test.c
 
-all: $(TARGET)
+all: $(NAME)
 
 $(LIBLEXER):
-	cd ../01-Lexer && make
+	$(MAKE) -C ../01-Lexer
 
-$(LIBPARSER): srcs/parser.o srcs/scope_table.o
-	ar rcs $@ $^
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
 
-srcs/%.o: srcs/%.c
+$(OBJDIR)/%.o: srcs/%.c | $(OBJDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(TARGET): srcs/main.o $(LIBPARSER) $(LIBLEXER)
-	$(CC) $(CFLAGS) -o $@ srcs/main.o -L. -lparser -L../01-Lexer -llexer
+$(LIB): $(LIB_OBJS)
+	ar rcs $@ $^
+
+$(NAME): $(MAIN_OBJ) $(LIB) $(LIBLEXER)
+	$(CC) $(CFLAGS) -o $@ $(MAIN_OBJ) -L. -lparser -L../01-Lexer -llexer
+
+test: $(NAME)
+	./$(NAME) $(TEST_SRC)
 
 clean:
-	rm -f $(TARGET) $(LIBPARSER) srcs/*.o
+	rm -rf $(OBJDIR)
+	$(MAKE) -C ../01-Lexer clean
 
-re: clean all
+fclean: clean
+	rm -f $(NAME) $(LIB)
+	$(MAKE) -C ../01-Lexer fclean
 
-.PHONY: all clean re
+re: fclean all
+
+.PHONY: all test clean fclean re
