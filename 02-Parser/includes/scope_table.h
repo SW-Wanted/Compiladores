@@ -19,6 +19,7 @@ typedef struct {
     int         line;
     int         column;
     int         param_count;
+    int         active;
 } Symbol;
 
 #define MAX_SCOPE_SYMBOLS 1024

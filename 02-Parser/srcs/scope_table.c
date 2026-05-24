@@ -31,8 +31,13 @@ void scope_exit(ScopeTable *table)
 {
     if (table->scope_depth <= 1)
         return;
+
+    int start = table->scope_start[table->scope_depth - 1];
+    for (int i = start; i < table->count; i++) {
+        if (table->entries[i].scope_level == table->current_scope)
+            table->entries[i].active = 0;
+    }
     table->scope_depth--;
-    table->count = table->scope_start[table->scope_depth];
     table->current_scope--;
 }
 
@@ -48,13 +53,14 @@ int scope_insert(ScopeTable *table, const Symbol *symbol)
         return -1;
     }
     table->entries[table->count] = *symbol;
+    table->entries[table->count].active = 1;
     return table->count++;
 }
 
 Symbol *scope_lookup(ScopeTable *table, const char *name)
 {
     for (int i = table->count - 1; i >= 0; i--) {
-        if (strcmp(table->entries[i].name, name) == 0)
+        if (table->entries[i].active && strcmp(table->entries[i].name, name) == 0)
             return &table->entries[i];
     }
     return NULL;
@@ -64,7 +70,8 @@ Symbol *scope_lookup_current(ScopeTable *table, const char *name)
 {
     int start = current_scope_start(table);
     for (int i = table->count - 1; i >= start; i--) {
-        if (strcmp(table->entries[i].name, name) == 0)
+        if (table->entries[i].active && table->entries[i].scope_level == table->current_scope &&
+            strcmp(table->entries[i].name, name) == 0)
             return &table->entries[i];
     }
     return NULL;
