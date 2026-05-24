@@ -78,6 +78,12 @@
 #define TOKEN_PLUS_ASSIGN    61
 /** @brief Operador de atribuicao -=. */
 #define TOKEN_MINUS_ASSIGN   62
+/** @brief Operador de atribuicao *=. */
+#define TOKEN_STAR_ASSIGN    63
+/** @brief Operador de atribuicao /=. */
+#define TOKEN_SLASH_ASSIGN   64
+/** @brief Operador de atribuicao %=. */
+#define TOKEN_PERCENT_ASSIGN 65
 
 /** @brief Delimitador (. */
 #define TOKEN_LPAREN         70

@@ -231,8 +231,12 @@ Token analex(Lexer *lexer)
             if (next == '=') { ler_caractere(lexer); return make_token(TOKEN_MINUS_ASSIGN, "-=", line); }
             return make_token(TOKEN_MINUS, "-", line);
 
-        case '*': return make_token(TOKEN_STAR,    "*", line);
-        case '%': return make_token(TOKEN_PERCENT, "%", line);
+        case '*':
+            if (next == '=') { ler_caractere(lexer); return make_token(TOKEN_STAR_ASSIGN, "*=", line); }
+            return make_token(TOKEN_STAR,    "*", line);
+        case '%':
+            if (next == '=') { ler_caractere(lexer); return make_token(TOKEN_PERCENT_ASSIGN, "%=", line); }
+            return make_token(TOKEN_PERCENT, "%", line);
 
         case '=':
             if (next == '=') { ler_caractere(lexer); return make_token(TOKEN_EQ,  "==", line); }
