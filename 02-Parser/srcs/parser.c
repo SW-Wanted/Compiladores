@@ -36,6 +36,10 @@ static ASTNode *parse_ramo_else_opcional(Parser *parser);
 static ASTNode *parse_instrucao_while(Parser *parser);
 static ASTNode *parse_instrucao_for(Parser *parser);
 static ASTNode *parse_instrucao_do(Parser *parser);
+static ASTNode *parse_instrucao_switch(Parser *parser);
+static ASTNode *parse_instrucao_break(Parser *parser);
+static ASTNode *parse_instrucao_continue(Parser *parser);
+static ASTNode *parse_case_item(Parser *parser);
 static ASTNode *parse_expressao_opcional(Parser *parser);
 static ASTNode *parse_instrucao_return(Parser *parser);
 static ASTNode *parse_expressao(Parser *parser);
@@ -43,6 +47,10 @@ static ASTNode *parse_atribuicao(Parser *parser);
 static ASTNode *parse_logico_ou(Parser *parser);
 static ASTNode *parser_error(Parser *parser, const char *message);
 static ASTNode *parse_logico_e(Parser *parser);
+static ASTNode *parse_bitwise_ou(Parser *parser);
+static ASTNode *parse_bitwise_xor(Parser *parser);
+static ASTNode *parse_bitwise_e(Parser *parser);
+static ASTNode *parse_shift(Parser *parser);
 static ASTNode *parse_igualdade(Parser *parser);
 static ASTNode *parse_relacional(Parser *parser);
 static ASTNode *parse_aditivo(Parser *parser);
@@ -125,12 +133,18 @@ static const char *ast_kind_name(ASTNodeKind kind)
         case AST_WHILE_STMT: return "instrucao_while";
         case AST_FOR_STMT: return "instrucao_for";
         case AST_DO_WHILE_STMT: return "instrucao_do";
+        case AST_SWITCH_STMT: return "instrucao_switch";
+        case AST_CASE_STMT: return "caso";
+        case AST_DEFAULT_STMT: return "default";
+        case AST_BREAK_STMT: return "break";
+        case AST_CONTINUE_STMT: return "continue";
         case AST_RETURN_STMT: return "instrucao_return";
         case AST_BINARY_EXPR: return "expressao_binaria";
         case AST_UNARY_EXPR: return "expressao_unaria";
         case AST_CALL_EXPR: return "chamada_funcao";
         case AST_SUBSCRIPT_EXPR: return "subscrito";
         case AST_MEMBER_EXPR: return "acesso_membro";
+        case AST_UNION_DECL: return "declaracao_union";
         case AST_IDENTIFIER: return "identificador";
         case AST_LITERAL: return "literal";
         case AST_INCLUDE_PATH: return "nome_ficheiro";
@@ -189,7 +203,9 @@ static int parser_is_local_declaration_start(Parser *parser)
 {
     if (parser->current.type == TOKEN_INT || parser->current.type == TOKEN_FLOAT ||
         parser->current.type == TOKEN_CHAR || parser->current.type == TOKEN_VOID ||
-        parser->current.type == TOKEN_STRUCT) {
+        parser->current.type == TOKEN_STRUCT || parser->current.type == TOKEN_UNION ||
+        parser->current.type == TOKEN_DOUBLE || parser->current.type == TOKEN_LONG ||
+        parser->current.type == TOKEN_SHORT || parser->current.type == TOKEN_STRING) {
         return 1;
     }
     if (parser->current.type == TOKEN_IDENTIFIER) {
@@ -206,8 +222,13 @@ static int parser_is_sync_token(Parser *parser)
            parser->current.type == TOKEN_RETURN || parser->current.type == TOKEN_LBRACE ||
            parser->current.type == TOKEN_RBRACE || parser->current.type == TOKEN_HASH ||
            parser->current.type == TOKEN_TYPEDEF || parser->current.type == TOKEN_STRUCT ||
+           parser->current.type == TOKEN_UNION || parser->current.type == TOKEN_SWITCH ||
+           parser->current.type == TOKEN_CASE || parser->current.type == TOKEN_DEFAULT ||
+           parser->current.type == TOKEN_BREAK || parser->current.type == TOKEN_CONTINUE ||
            parser->current.type == TOKEN_INT || parser->current.type == TOKEN_FLOAT ||
            parser->current.type == TOKEN_CHAR || parser->current.type == TOKEN_VOID ||
+           parser->current.type == TOKEN_DOUBLE || parser->current.type == TOKEN_LONG ||
+           parser->current.type == TOKEN_SHORT || parser->current.type == TOKEN_STRING ||
            parser->current.type == TOKEN_IDENTIFIER || parser->current.type == TOKEN_EOF;
 }
 
@@ -308,7 +329,12 @@ static int type_specifier_token(const ASTNode *type_spec)
     if (strcmp(type_spec->text, "float") == 0) return TOKEN_FLOAT;
     if (strcmp(type_spec->text, "char") == 0) return TOKEN_CHAR;
     if (strcmp(type_spec->text, "void") == 0) return TOKEN_VOID;
+    if (strcmp(type_spec->text, "double") == 0) return TOKEN_DOUBLE;
+    if (strcmp(type_spec->text, "long") == 0) return TOKEN_LONG;
+    if (strcmp(type_spec->text, "short") == 0) return TOKEN_SHORT;
+    if (strcmp(type_spec->text, "string") == 0) return TOKEN_STRING;
     if (strcmp(type_spec->text, "struct") == 0) return TOKEN_STRUCT;
+    if (strcmp(type_spec->text, "union") == 0) return TOKEN_UNION;
     if (type_spec->child_count > 0)
         return type_specifier_token(type_spec->children[0]);
     return TOKEN_IDENTIFIER;
@@ -485,8 +511,20 @@ static ASTNode *parse_type_specifier(Parser *parser)
         return parser_expect(parser, TOKEN_CHAR, AST_TYPE_SPECIFIER);
     } else if (parser->current.type == TOKEN_VOID) {
         return parser_expect(parser, TOKEN_VOID, AST_TYPE_SPECIFIER);
+    } else if (parser->current.type == TOKEN_DOUBLE) {
+        return parser_expect(parser, TOKEN_DOUBLE, AST_TYPE_SPECIFIER);
+    } else if (parser->current.type == TOKEN_LONG) {
+        return parser_expect(parser, TOKEN_LONG, AST_TYPE_SPECIFIER);
+    } else if (parser->current.type == TOKEN_SHORT) {
+        return parser_expect(parser, TOKEN_SHORT, AST_TYPE_SPECIFIER);
+    } else if (parser->current.type == TOKEN_STRING) {
+        return parser_expect(parser, TOKEN_STRING, AST_TYPE_SPECIFIER);
     } else if (parser->current.type == TOKEN_STRUCT) {
         ASTNode *node = parser_expect(parser, TOKEN_STRUCT, AST_TYPE_SPECIFIER);
+        ast_add_child(node, parse_nome_ou_corpo_struct(parser));
+        return node;
+    } else if (parser->current.type == TOKEN_UNION) {
+        ASTNode *node = parser_expect(parser, TOKEN_UNION, AST_TYPE_SPECIFIER);
         ast_add_child(node, parse_nome_ou_corpo_struct(parser));
         return node;
     } else if (parser->current.type == TOKEN_IDENTIFIER) {
@@ -772,6 +810,9 @@ static ASTNode *parse_instrucao(Parser *parser)
     if (parser->current.type == TOKEN_WHILE) return parse_instrucao_while(parser);
     if (parser->current.type == TOKEN_FOR) return parse_instrucao_for(parser);
     if (parser->current.type == TOKEN_DO) return parse_instrucao_do(parser);
+    if (parser->current.type == TOKEN_SWITCH) return parse_instrucao_switch(parser);
+    if (parser->current.type == TOKEN_BREAK) return parse_instrucao_break(parser);
+    if (parser->current.type == TOKEN_CONTINUE) return parse_instrucao_continue(parser);
     if (parser->current.type == TOKEN_RETURN) return parse_instrucao_return(parser);
     if (parser->current.type == TOKEN_LBRACE) return parse_bloco(parser);
     if (parser->current.type == TOKEN_SEMICOLON) {
@@ -877,6 +918,65 @@ static ASTNode *parse_instrucao_do(Parser *parser)
     return node;
 }
 
+static ASTNode *parse_instrucao_switch(Parser *parser)
+{
+    ASTNode *node = ast_new(AST_SWITCH_STMT, NULL, -1, -1);
+    parser_expect(parser, TOKEN_SWITCH, AST_IDENTIFIER);
+    parser_expect(parser, TOKEN_LPAREN, AST_ERROR);
+    ast_add_child(node, parse_expressao(parser));
+    parser_expect(parser, TOKEN_RPAREN, AST_ERROR);
+    parser_expect(parser, TOKEN_LBRACE, AST_ERROR);
+    while (parser->current.type != TOKEN_RBRACE && parser->current.type != TOKEN_EOF) {
+        ast_add_child(node, parse_case_item(parser));
+    }
+    parser_expect(parser, TOKEN_RBRACE, AST_ERROR);
+    return node;
+}
+
+static ASTNode *parse_instrucao_break(Parser *parser)
+{
+    ASTNode *node = ast_new(AST_BREAK_STMT, NULL, -1, -1);
+    ast_add_child(node, parser_expect(parser, TOKEN_BREAK, AST_IDENTIFIER));
+    ASTNode *terminator = parser_expect_semicolon(parser);
+    if (terminator) ast_add_child(node, terminator);
+    return node;
+}
+
+static ASTNode *parse_instrucao_continue(Parser *parser)
+{
+    ASTNode *node = ast_new(AST_CONTINUE_STMT, NULL, -1, -1);
+    ast_add_child(node, parser_expect(parser, TOKEN_CONTINUE, AST_IDENTIFIER));
+    ASTNode *terminator = parser_expect_semicolon(parser);
+    if (terminator) ast_add_child(node, terminator);
+    return node;
+}
+
+static ASTNode *parse_case_item(Parser *parser)
+{
+    if (parser->current.type == TOKEN_CASE) {
+        ASTNode *node = ast_new(AST_CASE_STMT, NULL, -1, -1);
+        parser_expect(parser, TOKEN_CASE, AST_IDENTIFIER);
+        ast_add_child(node, parser_expect(parser, TOKEN_INT_LITERAL, AST_LITERAL));
+        parser_expect(parser, TOKEN_COLON, AST_ERROR);
+        while (parser->current.type != TOKEN_CASE && parser->current.type != TOKEN_DEFAULT &&
+               parser->current.type != TOKEN_RBRACE && parser->current.type != TOKEN_EOF) {
+            ast_add_child(node, parse_item_bloco(parser));
+        }
+        return node;
+    }
+    if (parser->current.type == TOKEN_DEFAULT) {
+        ASTNode *node = ast_new(AST_DEFAULT_STMT, NULL, -1, -1);
+        parser_expect(parser, TOKEN_DEFAULT, AST_IDENTIFIER);
+        parser_expect(parser, TOKEN_COLON, AST_ERROR);
+        while (parser->current.type != TOKEN_CASE && parser->current.type != TOKEN_DEFAULT &&
+               parser->current.type != TOKEN_RBRACE && parser->current.type != TOKEN_EOF) {
+            ast_add_child(node, parse_item_bloco(parser));
+        }
+        return node;
+    }
+    return parser_error(parser, "esperado case ou default");
+}
+
 static ASTNode *parse_expressao_opcional(Parser *parser)
 {
     if (parser->current.type == TOKEN_SEMICOLON || parser->current.type == TOKEN_RPAREN)
@@ -905,7 +1005,10 @@ static ASTNode *parse_atribuicao(Parser *parser)
     ASTNode *left = parse_logico_ou(parser);
     if (parser->current.type == TOKEN_ASSIGN || parser->current.type == TOKEN_PLUS_ASSIGN ||
         parser->current.type == TOKEN_MINUS_ASSIGN || parser->current.type == TOKEN_STAR_ASSIGN ||
-        parser->current.type == TOKEN_SLASH_ASSIGN || parser->current.type == TOKEN_PERCENT_ASSIGN) {
+        parser->current.type == TOKEN_SLASH_ASSIGN || parser->current.type == TOKEN_PERCENT_ASSIGN ||
+        parser->current.type == TOKEN_AMP_ASSIGN || parser->current.type == TOKEN_PIPE_ASSIGN ||
+        parser->current.type == TOKEN_CARET_ASSIGN || parser->current.type == TOKEN_LSHIFT_ASSIGN ||
+        parser->current.type == TOKEN_RSHIFT_ASSIGN) {
         char *op = parser_current_lexeme(parser);
         parser_next(parser);
         ASTNode *right = parse_atribuicao(parser);
@@ -932,8 +1035,50 @@ static ASTNode *parse_logico_ou(Parser *parser)
 
 static ASTNode *parse_logico_e(Parser *parser)
 {
-    ASTNode *left = parse_igualdade(parser);
+    ASTNode *left = parse_bitwise_ou(parser);
     while (parser->current.type == TOKEN_AND) {
+        char *op = parser_current_lexeme(parser);
+        parser_next(parser);
+        ASTNode *right = parse_bitwise_ou(parser);
+        ASTNode *node = ast_binary(AST_BINARY_EXPR, op, left, right);
+        free(op);
+        left = node;
+    }
+    return left;
+}
+
+static ASTNode *parse_bitwise_ou(Parser *parser)
+{
+    ASTNode *left = parse_bitwise_xor(parser);
+    while (parser->current.type == TOKEN_PIPE) {
+        char *op = parser_current_lexeme(parser);
+        parser_next(parser);
+        ASTNode *right = parse_bitwise_xor(parser);
+        ASTNode *node = ast_binary(AST_BINARY_EXPR, op, left, right);
+        free(op);
+        left = node;
+    }
+    return left;
+}
+
+static ASTNode *parse_bitwise_xor(Parser *parser)
+{
+    ASTNode *left = parse_bitwise_e(parser);
+    while (parser->current.type == TOKEN_CARET) {
+        char *op = parser_current_lexeme(parser);
+        parser_next(parser);
+        ASTNode *right = parse_bitwise_e(parser);
+        ASTNode *node = ast_binary(AST_BINARY_EXPR, op, left, right);
+        free(op);
+        left = node;
+    }
+    return left;
+}
+
+static ASTNode *parse_bitwise_e(Parser *parser)
+{
+    ASTNode *left = parse_igualdade(parser);
+    while (parser->current.type == TOKEN_AMP) {
         char *op = parser_current_lexeme(parser);
         parser_next(parser);
         ASTNode *right = parse_igualdade(parser);
@@ -960,9 +1105,23 @@ static ASTNode *parse_igualdade(Parser *parser)
 
 static ASTNode *parse_relacional(Parser *parser)
 {
-    ASTNode *left = parse_aditivo(parser);
+    ASTNode *left = parse_shift(parser);
     while (parser->current.type == TOKEN_LT || parser->current.type == TOKEN_GT ||
            parser->current.type == TOKEN_LEQ || parser->current.type == TOKEN_GEQ) {
+        char *op = parser_current_lexeme(parser);
+        parser_next(parser);
+        ASTNode *right = parse_shift(parser);
+        ASTNode *node = ast_binary(AST_BINARY_EXPR, op, left, right);
+        free(op);
+        left = node;
+    }
+    return left;
+}
+
+static ASTNode *parse_shift(Parser *parser)
+{
+    ASTNode *left = parse_aditivo(parser);
+    while (parser->current.type == TOKEN_LSHIFT || parser->current.type == TOKEN_RSHIFT) {
         char *op = parser_current_lexeme(parser);
         parser_next(parser);
         ASTNode *right = parse_aditivo(parser);
@@ -1041,6 +1200,14 @@ static ASTNode *parse_pos_fixo(Parser *parser)
         if (parser->current.type == TOKEN_DOT) {
             parser_next(parser);
             ASTNode *member = ast_new(AST_MEMBER_EXPR, NULL, -1, -1);
+            ast_add_child(member, node);
+            ast_add_child(member, parser_expect(parser, TOKEN_IDENTIFIER, AST_IDENTIFIER));
+            node = member;
+            continue;
+        }
+        if (parser->current.type == TOKEN_ARROW) {
+            parser_next(parser);
+            ASTNode *member = ast_new(AST_MEMBER_EXPR, "->", -1, -1);
             ast_add_child(member, node);
             ast_add_child(member, parser_expect(parser, TOKEN_IDENTIFIER, AST_IDENTIFIER));
             node = member;
