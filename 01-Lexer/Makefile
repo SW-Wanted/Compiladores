@@ -1,29 +1,38 @@
-NAME = liblexer.a
 CC       = cc
 CFLAGS   = -Wall -Wextra -Werror -Iincludes
-SRC      = srcs/lexer.c srcs/token.c srcs/symbol_table.c
-OBJ      = $(SRC:.c=.o)
-TARGET   = lexer
+NAME     = lexer
+LIB      = liblexer.a
+OBJDIR   = objs
+LIBSRCS  = srcs/lexer.c srcs/token.c srcs/symbol_table.c
+LIBOBJS  = $(LIBSRCS:srcs/%.c=$(OBJDIR)/%.o)
+MAIN_OBJ = $(OBJDIR)/main.o
+TEST_SRC = tests/teste.c
 
-all: $(TARGET)
+all: $(NAME)
 
-$(NAME): $(OBJ)
-	ar rcs $@ $^
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
 
-$(TARGET): srcs/main.o $(NAME)
-	$(CC) $(CFLAGS) -o $@ srcs/main.o -L. -llexer
-
-srcs/%.o: srcs/%.c
+$(OBJDIR)/%.o: srcs/%.c | $(OBJDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-lib: $(NAME)
+$(LIB): $(LIBOBJS)
+	ar rcs $@ $^
 
-test: $(TARGET)
-	./$(TARGET) tests/teste.c
+$(NAME): $(MAIN_OBJ) $(LIB)
+	$(CC) $(CFLAGS) -o $@ $(MAIN_OBJ) -L. -llexer
+
+lib: $(LIB)
+
+test: $(NAME)
+	./$(NAME) $(TEST_SRC)
 
 clean:
-	rm -f $(TARGET) $(NAME) srcs/*.o
+	rm -rf $(OBJDIR)
 
-re: clean all
+fclean: clean
+	rm -f $(NAME) $(LIB)
 
-.PHONY: all lib test clean re
+re: fclean all
+
+.PHONY: all lib test clean fclean re
