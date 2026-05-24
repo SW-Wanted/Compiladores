@@ -44,6 +44,7 @@ static ASTNode *parse_expressao_opcional(Parser *parser);
 static ASTNode *parse_instrucao_return(Parser *parser);
 static ASTNode *parse_expressao(Parser *parser);
 static ASTNode *parse_atribuicao(Parser *parser);
+static ASTNode *parse_condicional(Parser *parser);
 static ASTNode *parse_logico_ou(Parser *parser);
 static ASTNode *parser_error(Parser *parser, const char *message);
 static ASTNode *parse_logico_e(Parser *parser);
@@ -144,6 +145,7 @@ static const char *ast_kind_name(ASTNodeKind kind)
         case AST_CALL_EXPR: return "chamada_funcao";
         case AST_SUBSCRIPT_EXPR: return "subscrito";
         case AST_MEMBER_EXPR: return "acesso_membro";
+        case AST_CONDITIONAL_EXPR: return "expressao_condicional";
         case AST_UNION_DECL: return "declaracao_union";
         case AST_IDENTIFIER: return "identificador";
         case AST_LITERAL: return "literal";
@@ -209,7 +211,31 @@ static int parser_is_local_declaration_start(Parser *parser)
         return 1;
     }
     if (parser->current.type == TOKEN_IDENTIFIER) {
+        const char *lex = parser->current.lexeme;
+        if (strcmp(lex, "const") == 0 || strcmp(lex, "static") == 0 ||
+            strcmp(lex, "unsigned") == 0 || strcmp(lex, "signed") == 0 ||
+            strcmp(lex, "volatile") == 0 || strcmp(lex, "extern") == 0) {
+            return 1;
+        }
         return parser->next.type == TOKEN_STAR || parser->next.type == TOKEN_IDENTIFIER;
+    }
+    return 0;
+}
+
+static int parser_type_specifier_starts_after_lparen(Parser *parser)
+{
+    if (parser->next.type == TOKEN_INT || parser->next.type == TOKEN_FLOAT ||
+        parser->next.type == TOKEN_CHAR || parser->next.type == TOKEN_VOID ||
+        parser->next.type == TOKEN_DOUBLE || parser->next.type == TOKEN_LONG ||
+        parser->next.type == TOKEN_SHORT || parser->next.type == TOKEN_STRING ||
+        parser->next.type == TOKEN_STRUCT || parser->next.type == TOKEN_UNION) {
+        return 1;
+    }
+    if (parser->next.type == TOKEN_IDENTIFIER) {
+        const char *lex = parser->next.lexeme;
+        return strcmp(lex, "const") == 0 || strcmp(lex, "static") == 0 ||
+               strcmp(lex, "unsigned") == 0 || strcmp(lex, "signed") == 0 ||
+               strcmp(lex, "volatile") == 0 || strcmp(lex, "extern") == 0;
     }
     return 0;
 }
@@ -618,6 +644,23 @@ static ASTNode *parse_inicializacao_opcional(Parser *parser)
 {
     if (parser->current.type == TOKEN_ASSIGN) {
         parser_expect(parser, TOKEN_ASSIGN, AST_ERROR);
+        if (parser->current.type == TOKEN_LBRACE) {
+            ASTNode *node = ast_new(AST_LITERAL, NULL, -1, -1);
+            int depth = 0;
+            do {
+                if (parser->current.type == TOKEN_LBRACE) {
+                    depth++;
+                } else if (parser->current.type == TOKEN_RBRACE) {
+                    depth--;
+                    if (depth == 0) {
+                        parser_next(parser);
+                        break;
+                    }
+                }
+                parser_next(parser);
+            } while (parser->current.type != TOKEN_EOF && depth > 0);
+            return node;
+        }
         return parse_expressao(parser);
     }
     return NULL;
@@ -656,8 +699,6 @@ static ASTNode *parse_declaracao_geral(Parser *parser)
     if (parser->current.type == TOKEN_LPAREN) {
         ASTNode *func = ast_new(AST_FUNC_DECL, NULL, -1, -1);
         int func_index = insert_symbol(parser, type_spec, decl, SYM_FUNCTION, decl_line, decl_col);
-        scope_enter_named(&parser->scope_table, declarator_name(decl));
-        parser_clear_pending_scope(parser);
         ast_add_child(func, type_spec);
         ast_add_child(func, decl);
         parser_expect(parser, TOKEN_LPAREN, AST_ERROR);
@@ -666,6 +707,13 @@ static ASTNode *parse_declaracao_geral(Parser *parser)
             parser->scope_table.entries[func_index].param_count = params->child_count;
         ast_add_child(func, params);
         parser_expect(parser, TOKEN_RPAREN, AST_ERROR);
+        if (parser->current.type == TOKEN_SEMICOLON) {
+            parser_expect(parser, TOKEN_SEMICOLON, AST_ERROR);
+            return func;
+        }
+
+        scope_enter_named(&parser->scope_table, declarator_name(decl));
+        parser_clear_pending_scope(parser);
         ast_add_child(func, parse_bloco_interno(parser));
         scope_exit(&parser->scope_table);
         return func;
@@ -956,7 +1004,7 @@ static ASTNode *parse_case_item(Parser *parser)
     if (parser->current.type == TOKEN_CASE) {
         ASTNode *node = ast_new(AST_CASE_STMT, NULL, -1, -1);
         parser_expect(parser, TOKEN_CASE, AST_IDENTIFIER);
-        ast_add_child(node, parser_expect(parser, TOKEN_INT_LITERAL, AST_LITERAL));
+        ast_add_child(node, parse_expressao(parser));
         parser_expect(parser, TOKEN_COLON, AST_ERROR);
         while (parser->current.type != TOKEN_CASE && parser->current.type != TOKEN_DEFAULT &&
                parser->current.type != TOKEN_RBRACE && parser->current.type != TOKEN_EOF) {
@@ -1002,7 +1050,7 @@ static ASTNode *parse_expressao(Parser *parser)
 
 static ASTNode *parse_atribuicao(Parser *parser)
 {
-    ASTNode *left = parse_logico_ou(parser);
+    ASTNode *left = parse_condicional(parser);
     if (parser->current.type == TOKEN_ASSIGN || parser->current.type == TOKEN_PLUS_ASSIGN ||
         parser->current.type == TOKEN_MINUS_ASSIGN || parser->current.type == TOKEN_STAR_ASSIGN ||
         parser->current.type == TOKEN_SLASH_ASSIGN || parser->current.type == TOKEN_PERCENT_ASSIGN ||
@@ -1017,6 +1065,23 @@ static ASTNode *parse_atribuicao(Parser *parser)
         return node;
     }
     return left;
+}
+
+static ASTNode *parse_condicional(Parser *parser)
+{
+    ASTNode *condition = parse_logico_ou(parser);
+    if (parser->current.type == TOKEN_QUESTION) {
+        parser_next(parser);
+        ASTNode *when_true = parse_expressao(parser);
+        parser_expect(parser, TOKEN_COLON, AST_ERROR);
+        ASTNode *when_false = parse_condicional(parser);
+        ASTNode *node = ast_new(AST_CONDITIONAL_EXPR, "?:", -1, -1);
+        ast_add_child(node, condition);
+        ast_add_child(node, when_true);
+        ast_add_child(node, when_false);
+        return node;
+    }
+    return condition;
 }
 
 static ASTNode *parse_logico_ou(Parser *parser)
@@ -1162,6 +1227,28 @@ static ASTNode *parse_multiplicativo(Parser *parser)
 
 static ASTNode *parse_unario(Parser *parser)
 {
+    if (parser->current.type == TOKEN_SIZEOF) {
+        ASTNode *node = ast_unary(AST_UNARY_EXPR, "sizeof", NULL);
+        parser_next(parser);
+        if (parser->current.type == TOKEN_LPAREN) {
+            int depth = 0;
+            do {
+                if (parser->current.type == TOKEN_LPAREN) {
+                    depth++;
+                } else if (parser->current.type == TOKEN_RPAREN) {
+                    depth--;
+                    if (depth == 0) {
+                        parser_next(parser);
+                        break;
+                    }
+                }
+                parser_next(parser);
+            } while (parser->current.type != TOKEN_EOF && depth > 0);
+        } else {
+            ast_add_child(node, parse_unario(parser));
+        }
+        return node;
+    }
     if (parser->current.type == TOKEN_NOT || parser->current.type == TOKEN_MINUS ||
         parser->current.type == TOKEN_AMP || parser->current.type == TOKEN_STAR ||
         parser->current.type == TOKEN_PLUS_PLUS || parser->current.type == TOKEN_MINUS_MINUS) {
@@ -1169,6 +1256,14 @@ static ASTNode *parse_unario(Parser *parser)
         parser_next(parser);
         ASTNode *node = ast_unary(AST_UNARY_EXPR, op, parse_unario(parser));
         free(op);
+        return node;
+    }
+    if (parser->current.type == TOKEN_LPAREN && parser_type_specifier_starts_after_lparen(parser)) {
+        parser_next(parser);
+        ASTNode *cast_type = parse_type_specifier(parser);
+        parser_expect(parser, TOKEN_RPAREN, AST_ERROR);
+        ASTNode *node = ast_unary(AST_UNARY_EXPR, "cast", parse_unario(parser));
+        ast_add_child(node, cast_type);
         return node;
     }
     return parse_pos_fixo(parser);
