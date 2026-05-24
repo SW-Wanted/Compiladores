@@ -2,6 +2,16 @@
 #include <string.h>
 #include "scope_table.h"
 
+static void copy_scope_name(char *destination, const char *source)
+{
+    if (!source || !source[0]) {
+        destination[0] = '\0';
+        return;
+    }
+    strncpy(destination, source, MAX_SCOPE_NAME_LEN - 1);
+    destination[MAX_SCOPE_NAME_LEN - 1] = '\0';
+}
+
 static int current_scope_start(const ScopeTable *table)
 {
     if (table->scope_depth <= 0)
@@ -14,16 +24,36 @@ void scope_table_init(ScopeTable *table)
     table->count = 0;
     table->current_scope = 0;
     table->scope_depth = 0;
-    scope_enter(table);
+    scope_enter_named(table, "Global");
 }
 
 void scope_enter(ScopeTable *table)
+{
+    scope_enter_named(table, NULL);
+}
+
+const char *scope_current_name(const ScopeTable *table)
+{
+    if (!table || table->scope_depth <= 0)
+        return "Global";
+    if (table->scope_names[table->scope_depth - 1][0] == '\0')
+        return "Global";
+    return table->scope_names[table->scope_depth - 1];
+}
+
+void scope_enter_named(ScopeTable *table, const char *scope_name)
 {
     if (table->scope_depth >= MAX_SCOPE_DEPTH) {
         fprintf(stderr, "Erro: profundidade maxima de escopo excedida\n");
         return;
     }
+    const char *parent_scope = scope_current_name(table);
     table->scope_start[table->scope_depth++] = table->count;
+    if (scope_name && scope_name[0]) {
+        copy_scope_name(table->scope_names[table->scope_depth - 1], scope_name);
+    } else {
+        copy_scope_name(table->scope_names[table->scope_depth - 1], parent_scope);
+    }
     table->current_scope++;
 }
 
@@ -38,6 +68,7 @@ void scope_exit(ScopeTable *table)
             table->entries[i].active = 0;
     }
     table->scope_depth--;
+    table->scope_names[table->scope_depth][0] = '\0';
     table->current_scope--;
 }
 
@@ -79,10 +110,10 @@ Symbol *scope_lookup_current(ScopeTable *table, const char *name)
 
 void scope_table_print(const ScopeTable *table)
 {
-    printf("\n%-5s %-20s %-12s %-14s %-5s %-7s %-7s %-7s\n",
-           "#", "LEXEMA", "TIPO", "TIPO_RETORNO", "ESC", "PARAMS", "LINHA", "COLUNA");
-    printf("%-5s %-20s %-12s %-14s %-5s %-7s %-7s %-7s\n",
-           "-----", "--------------------", "------------", "--------------", "-----", "-------", "-------", "-------");
+    printf("\n%-5s %-20s %-12s %-18s %-28s %-10s %-7s %-7s\n",
+        "#", "IDENTIFICADOR", "TIPO", "TIPO_RETORNO", "ESCOPO", "PARAMETROS", "LINHA", "COLUNA");
+    printf("%-5s %-20s %-12s %-18s %-28s %-10s %-7s %-7s\n",
+        "-----", "--------------------", "------------", "------------------", "----------------------------", "----------", "-------", "-------");
     for (int i = 0; i < table->count; i++) {
         const Symbol *sym = &table->entries[i];
         const char *kind = "DESCONHECIDO";
@@ -93,12 +124,12 @@ void scope_table_print(const ScopeTable *table)
             case SYM_PARAM: kind = "PARAMETRO"; break;
             case SYM_ENUM_CONST: kind = "ENUM_CONST"; break;
         }
-        printf("%-5d %-20s %-12s %-14s %-5d %-7d %-7d %-7d\n",
+                 printf("%-5d %-20s %-12s %-18s %-28s %-10d %-7d %-7d\n",
                i + 1,
                sym->name,
                kind,
                token_name(sym->type_token),
-               sym->scope_level,
+             sym->scope_name[0] ? sym->scope_name : scope_current_name(table),
                sym->param_count,
                sym->line,
                sym->column);

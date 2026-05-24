@@ -56,6 +56,9 @@ static void declarator_position(const ASTNode *decl, int *line, int *column);
 static int type_specifier_token(const ASTNode *type_spec);
 static int insert_symbol(Parser *parser, const ASTNode *type_spec, const ASTNode *decl, SymbolKind kind, int line, int column);
 static void insert_declarators(Parser *parser, const ASTNode *type_spec, const ASTNode *node, SymbolKind kind, int line, int column);
+static void parser_clear_pending_scope(Parser *parser);
+static void parser_set_pending_scope(Parser *parser, const char *scope_name);
+static void build_child_scope_name(char *destination, size_t destination_size, const char *parent_scope, const char *segment);
 
 static ASTNode *ast_new(ASTNodeKind kind, const char *text, int line, int column)
 {
@@ -269,12 +272,26 @@ static void declarator_position(const ASTNode *decl, int *line, int *column)
 
 static int type_specifier_token(const ASTNode *type_spec)
 {
-    if (!type_spec || !type_spec->text) return TOKEN_IDENTIFIER;
+    if (!type_spec)
+        return TOKEN_IDENTIFIER;
+
+    if (type_spec->child_count > 0 && type_spec->text) {
+        if (strcmp(type_spec->text, "const") == 0 || strcmp(type_spec->text, "static") == 0 ||
+            strcmp(type_spec->text, "unsigned") == 0 || strcmp(type_spec->text, "signed") == 0 ||
+            strcmp(type_spec->text, "volatile") == 0 || strcmp(type_spec->text, "extern") == 0) {
+            return type_specifier_token(type_spec->children[0]);
+        }
+    }
+
+    if (!type_spec->text)
+        return TOKEN_IDENTIFIER;
     if (strcmp(type_spec->text, "int") == 0) return TOKEN_INT;
     if (strcmp(type_spec->text, "float") == 0) return TOKEN_FLOAT;
     if (strcmp(type_spec->text, "char") == 0) return TOKEN_CHAR;
     if (strcmp(type_spec->text, "void") == 0) return TOKEN_VOID;
     if (strcmp(type_spec->text, "struct") == 0) return TOKEN_STRUCT;
+    if (type_spec->child_count > 0)
+        return type_specifier_token(type_spec->children[0]);
     return TOKEN_IDENTIFIER;
 }
 
@@ -288,10 +305,42 @@ static int insert_symbol(Parser *parser, const ASTNode *type_spec, const ASTNode
     symbol.kind = kind;
     symbol.type_token = type_specifier_token(type_spec);
     symbol.scope_level = parser->scope_table.current_scope;
+    strncpy(symbol.scope_name, scope_current_name(&parser->scope_table), MAX_SCOPE_NAME_LEN - 1);
     symbol.line = line;
     symbol.column = column;
     symbol.param_count = 0;
     return scope_insert(&parser->scope_table, &symbol);
+}
+
+static void parser_clear_pending_scope(Parser *parser)
+{
+    parser->pending_scope_name[0] = '\0';
+}
+
+static void parser_set_pending_scope(Parser *parser, const char *scope_name)
+{
+    if (!scope_name) {
+        parser_clear_pending_scope(parser);
+        return;
+    }
+    strncpy(parser->pending_scope_name, scope_name, MAX_SCOPE_NAME_LEN - 1);
+    parser->pending_scope_name[MAX_SCOPE_NAME_LEN - 1] = '\0';
+}
+
+static void build_child_scope_name(char *destination, size_t destination_size, const char *parent_scope, const char *segment)
+{
+    if (!parent_scope || !parent_scope[0] || strcmp(parent_scope, "Global") == 0) {
+        snprintf(destination, destination_size, "%s", segment);
+        return;
+    }
+
+    const char *closing = strrchr(parent_scope, ')');
+    if (closing && closing > parent_scope) {
+        snprintf(destination, destination_size, "%.*s -> %s)", (int)(closing - parent_scope), parent_scope, segment);
+        return;
+    }
+
+    snprintf(destination, destination_size, "%s (%s)", parent_scope, segment);
 }
 
 static void insert_declarators(Parser *parser, const ASTNode *type_spec, const ASTNode *node, SymbolKind kind, int line, int column)
@@ -549,7 +598,8 @@ static ASTNode *parse_declaracao_geral(Parser *parser)
     if (parser->current.type == TOKEN_LPAREN) {
         ASTNode *func = ast_new(AST_FUNC_DECL, NULL, -1, -1);
         int func_index = insert_symbol(parser, type_spec, decl, SYM_FUNCTION, decl_line, decl_col);
-        scope_enter(&parser->scope_table);
+        scope_enter_named(&parser->scope_table, declarator_name(decl));
+        parser_clear_pending_scope(parser);
         ast_add_child(func, type_spec);
         ast_add_child(func, decl);
         parser_expect(parser, TOKEN_LPAREN, AST_ERROR);
@@ -630,7 +680,14 @@ static ASTNode *parse_bloco(Parser *parser)
 {
     ASTNode *node = ast_new(AST_BLOCK, NULL, -1, -1);
     parser_expect(parser, TOKEN_LBRACE, AST_ERROR);
-    scope_enter(&parser->scope_table);
+    if (parser->pending_scope_name[0]) {
+        scope_enter_named(&parser->scope_table, parser->pending_scope_name);
+    } else {
+        char fallback_scope[MAX_SCOPE_NAME_LEN];
+        build_child_scope_name(fallback_scope, sizeof(fallback_scope), scope_current_name(&parser->scope_table), "bloco");
+        scope_enter_named(&parser->scope_table, fallback_scope);
+    }
+    parser_clear_pending_scope(parser);
     while (parser->current.type != TOKEN_RBRACE && parser->current.type != TOKEN_EOF) {
         ast_add_child(node, parse_item_bloco(parser));
     }
@@ -722,7 +779,12 @@ static ASTNode *parse_instrucao_if(Parser *parser)
     parser_expect(parser, TOKEN_LPAREN, AST_ERROR);
     ast_add_child(node, parse_expressao(parser));
     parser_expect(parser, TOKEN_RPAREN, AST_ERROR);
+    char scope_name[MAX_SCOPE_NAME_LEN];
+    build_child_scope_name(scope_name, sizeof(scope_name), scope_current_name(&parser->scope_table), "if");
+    parser_set_pending_scope(parser, scope_name);
     ast_add_child(node, parse_instrucao(parser));
+    if (parser->pending_scope_name[0])
+        parser_clear_pending_scope(parser);
     ASTNode *else_branch = parse_ramo_else_opcional(parser);
     if (else_branch) ast_add_child(node, else_branch);
     return node;
@@ -746,7 +808,12 @@ static ASTNode *parse_instrucao_while(Parser *parser)
     parser_expect(parser, TOKEN_LPAREN, AST_ERROR);
     ast_add_child(node, parse_expressao(parser));
     parser_expect(parser, TOKEN_RPAREN, AST_ERROR);
+    char scope_name[MAX_SCOPE_NAME_LEN];
+    build_child_scope_name(scope_name, sizeof(scope_name), scope_current_name(&parser->scope_table), "while");
+    parser_set_pending_scope(parser, scope_name);
     ast_add_child(node, parse_instrucao(parser));
+    if (parser->pending_scope_name[0])
+        parser_clear_pending_scope(parser);
     return node;
 }
 
@@ -768,7 +835,12 @@ static ASTNode *parse_instrucao_for(Parser *parser)
     parser_expect(parser, TOKEN_SEMICOLON, AST_ERROR);
     ast_add_child(node, parse_expressao_opcional(parser));
     parser_expect(parser, TOKEN_RPAREN, AST_ERROR);
+    char scope_name[MAX_SCOPE_NAME_LEN];
+    build_child_scope_name(scope_name, sizeof(scope_name), scope_current_name(&parser->scope_table), "for");
+    parser_set_pending_scope(parser, scope_name);
     ast_add_child(node, parse_instrucao(parser));
+    if (parser->pending_scope_name[0])
+        parser_clear_pending_scope(parser);
     return node;
 }
 
@@ -1011,4 +1083,5 @@ void parser_init(Parser *parser, const char *source)
 {
     lexer_init(&parser->lexer, source);
     scope_table_init(&parser->scope_table);
+    parser_clear_pending_scope(parser);
 }

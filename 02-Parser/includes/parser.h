@@ -54,6 +54,7 @@ typedef struct {
     Token      current;
     Token      next;
     ASTNode   *root;
+    char       pending_scope_name[MAX_SCOPE_NAME_LEN];
 } Parser;
 
 void parser_init(Parser *parser, const char *source);
