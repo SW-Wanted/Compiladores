@@ -51,6 +51,10 @@
 #define TOKEN_SLASH          33
 /** @brief Operador %. */
 #define TOKEN_PERCENT        34
+/** @brief Operador ++. */
+#define TOKEN_PLUS_PLUS      35
+/** @brief Operador --. */
+#define TOKEN_MINUS_MINUS    36
 
 /** @brief Operador ==. */
 #define TOKEN_EQ             40

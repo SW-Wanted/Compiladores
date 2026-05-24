@@ -28,6 +28,8 @@ const char *token_name(int type)
         case TOKEN_STAR:    return "TOKEN_STAR";
         case TOKEN_SLASH:   return "TOKEN_SLASH";
         case TOKEN_PERCENT: return "TOKEN_PERCENT";
+        case TOKEN_PLUS_PLUS: return "TOKEN_PLUS_PLUS";
+        case TOKEN_MINUS_MINUS: return "TOKEN_MINUS_MINUS";
 
         case TOKEN_EQ:  return "TOKEN_EQ";
         case TOKEN_NEQ: return "TOKEN_NEQ";

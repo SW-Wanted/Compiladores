@@ -60,6 +60,9 @@ void lexer_init(Lexer *lexer, const char *source)
 char ler_caractere(Lexer *lexer)
 {
     char c = lexer->source[lexer->pos];
+    if (c == '\0')
+        return c;
+
     lexer->pos++;
     if (c == '\n') {
         lexer->line++;
@@ -241,10 +244,12 @@ Token analex(Lexer *lexer)
             return make_token(TOKEN_SLASH, "/", line, column);
 
         case '+':
+            if (next == '+') { ler_caractere(lexer); return make_token(TOKEN_PLUS_PLUS, "++", line, column); }
             if (next == '=') { ler_caractere(lexer); return make_token(TOKEN_PLUS_ASSIGN,  "+=", line, column); }
             return make_token(TOKEN_PLUS,  "+", line, column);
 
         case '-':
+            if (next == '-') { ler_caractere(lexer); return make_token(TOKEN_MINUS_MINUS, "--", line, column); }
             if (next == '=') { ler_caractere(lexer); return make_token(TOKEN_MINUS_ASSIGN, "-=", line, column); }
             return make_token(TOKEN_MINUS, "-", line, column);
 
