@@ -207,7 +207,7 @@ static int parser_is_local_declaration_start(Parser *parser)
         parser->current.type == TOKEN_CHAR || parser->current.type == TOKEN_VOID ||
         parser->current.type == TOKEN_STRUCT || parser->current.type == TOKEN_UNION ||
         parser->current.type == TOKEN_DOUBLE || parser->current.type == TOKEN_LONG ||
-        parser->current.type == TOKEN_SHORT || parser->current.type == TOKEN_STRING) {
+        parser->current.type == TOKEN_SHORT) {
         return 1;
     }
     if (parser->current.type == TOKEN_IDENTIFIER) {
@@ -227,8 +227,8 @@ static int parser_type_specifier_starts_after_lparen(Parser *parser)
     if (parser->next.type == TOKEN_INT || parser->next.type == TOKEN_FLOAT ||
         parser->next.type == TOKEN_CHAR || parser->next.type == TOKEN_VOID ||
         parser->next.type == TOKEN_DOUBLE || parser->next.type == TOKEN_LONG ||
-        parser->next.type == TOKEN_SHORT || parser->next.type == TOKEN_STRING ||
-        parser->next.type == TOKEN_STRUCT || parser->next.type == TOKEN_UNION) {
+        parser->next.type == TOKEN_SHORT || parser->next.type == TOKEN_STRUCT ||
+        parser->next.type == TOKEN_UNION) {
         return 1;
     }
     if (parser->next.type == TOKEN_IDENTIFIER) {
@@ -254,7 +254,7 @@ static int parser_is_sync_token(Parser *parser)
            parser->current.type == TOKEN_INT || parser->current.type == TOKEN_FLOAT ||
            parser->current.type == TOKEN_CHAR || parser->current.type == TOKEN_VOID ||
            parser->current.type == TOKEN_DOUBLE || parser->current.type == TOKEN_LONG ||
-           parser->current.type == TOKEN_SHORT || parser->current.type == TOKEN_STRING ||
+           parser->current.type == TOKEN_SHORT ||
            parser->current.type == TOKEN_IDENTIFIER || parser->current.type == TOKEN_EOF;
 }
 
@@ -288,8 +288,13 @@ static ASTNode *parser_expect_semicolon(Parser *parser)
 
 static ASTNode *parser_error(Parser *parser, const char *message)
 {
-    parser_add_error(parser, message, parser->current.line, parser->current.column);
-    return ast_new(AST_ERROR, message, parser->current.line, parser->current.column);
+    int line = parser->current.line;
+    int column = parser->current.column;
+
+    parser_add_error(parser, message, line, column);
+    if (parser->current.type != TOKEN_EOF)
+        parser_next(parser);
+    return ast_new(AST_ERROR, message, line, column);
 }
 
 static void parser_add_error(Parser *parser, const char *message, int line, int column)
@@ -358,7 +363,6 @@ static int type_specifier_token(const ASTNode *type_spec)
     if (strcmp(type_spec->text, "double") == 0) return TOKEN_DOUBLE;
     if (strcmp(type_spec->text, "long") == 0) return TOKEN_LONG;
     if (strcmp(type_spec->text, "short") == 0) return TOKEN_SHORT;
-    if (strcmp(type_spec->text, "string") == 0) return TOKEN_STRING;
     if (strcmp(type_spec->text, "struct") == 0) return TOKEN_STRUCT;
     if (strcmp(type_spec->text, "union") == 0) return TOKEN_UNION;
     if (type_spec->child_count > 0)
@@ -543,8 +547,6 @@ static ASTNode *parse_type_specifier(Parser *parser)
         return parser_expect(parser, TOKEN_LONG, AST_TYPE_SPECIFIER);
     } else if (parser->current.type == TOKEN_SHORT) {
         return parser_expect(parser, TOKEN_SHORT, AST_TYPE_SPECIFIER);
-    } else if (parser->current.type == TOKEN_STRING) {
-        return parser_expect(parser, TOKEN_STRING, AST_TYPE_SPECIFIER);
     } else if (parser->current.type == TOKEN_STRUCT) {
         ASTNode *node = parser_expect(parser, TOKEN_STRUCT, AST_TYPE_SPECIFIER);
         ast_add_child(node, parse_nome_ou_corpo_struct(parser));
