@@ -25,7 +25,6 @@ const char *token_name(int type)
         case TOKEN_DOUBLE:  return "double";
         case TOKEN_LONG:    return "long";
         case TOKEN_SHORT:   return "short";
-        case TOKEN_STRING:  return "string";
         case TOKEN_UNION:   return "union";
         case TOKEN_SWITCH:  return "switch";
         case TOKEN_CASE:    return "case";

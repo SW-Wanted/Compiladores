@@ -46,8 +46,6 @@
 #define TOKEN_LONG           25
 /** @brief Palavra reservada short. */
 #define TOKEN_SHORT          26
-/** @brief Palavra reservada string. */
-#define TOKEN_STRING         27
 /** @brief Palavra reservada union. */
 #define TOKEN_UNION          28
 /** @brief Palavra reservada switch. */
