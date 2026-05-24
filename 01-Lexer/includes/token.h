@@ -60,6 +60,8 @@
 #define TOKEN_BREAK          32
 /** @brief Palavra reservada continue. */
 #define TOKEN_CONTINUE       33
+/** @brief Operador sizeof. */
+#define TOKEN_SIZEOF         34
 
 /** @brief Operador +. */
 #define TOKEN_PLUS           40
@@ -128,6 +130,8 @@
 #define TOKEN_LSHIFT_ASSIGN  79
 /** @brief Operador de atribuicao >>=. */
 #define TOKEN_RSHIFT_ASSIGN  80
+/** @brief Operador ternario ?. */
+#define TOKEN_QUESTION       81
 
 /** @brief Delimitador (. */
 #define TOKEN_LPAREN         90

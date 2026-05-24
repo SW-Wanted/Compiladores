@@ -14,7 +14,6 @@ static const Keyword KEYWORDS[] = {
     { "double",  TOKEN_DOUBLE  },
     { "long",    TOKEN_LONG    },
     { "short",   TOKEN_SHORT   },
-    { "string",  TOKEN_STRING  },
     { "if",      TOKEN_IF      },
     { "else",    TOKEN_ELSE    },
     { "while",   TOKEN_WHILE   },
@@ -28,6 +27,7 @@ static const Keyword KEYWORDS[] = {
     { "default", TOKEN_DEFAULT },
     { "break",   TOKEN_BREAK   },
     { "continue",TOKEN_CONTINUE },
+    { "sizeof",  TOKEN_SIZEOF  },
     { "typedef", TOKEN_TYPEDEF },
     { "include", TOKEN_INCLUDE },
     { "define",  TOKEN_DEFINE  },
@@ -310,6 +310,9 @@ Token analex(Lexer *lexer)
         case '^':
             if (next == '=') { ler_caractere(lexer); return make_token(TOKEN_CARET_ASSIGN, "^=", line, column); }
             return make_token(TOKEN_CARET, "^", line, column);
+
+        case '?':
+            return make_token(TOKEN_QUESTION, "?", line, column);
 
         case '(': return make_token(TOKEN_LPAREN,    "(", line, column);
         case ')': return make_token(TOKEN_RPAREN,    ")", line, column);

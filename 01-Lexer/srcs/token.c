@@ -32,6 +32,7 @@ const char *token_name(int type)
         case TOKEN_DEFAULT: return "default";
         case TOKEN_BREAK:   return "break";
         case TOKEN_CONTINUE:return "continue";
+        case TOKEN_SIZEOF:  return "sizeof";
 
         case TOKEN_PLUS:    return "+";
         case TOKEN_MINUS:   return "-";
@@ -68,6 +69,7 @@ const char *token_name(int type)
         case TOKEN_CARET_ASSIGN: return "^=";
         case TOKEN_LSHIFT_ASSIGN:return "<<=";
         case TOKEN_RSHIFT_ASSIGN:return ">>=";
+        case TOKEN_QUESTION: return "?";
 
         case TOKEN_LPAREN:    return "(";
         case TOKEN_RPAREN:    return ")";
