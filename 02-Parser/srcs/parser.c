@@ -175,11 +175,17 @@ static int parser_match(Parser *parser, int type)
     return 0;
 }
 
-static int parser_is_type_specifier_start(Parser *parser)
+static int parser_is_local_declaration_start(Parser *parser)
 {
-    return parser->current.type == TOKEN_INT || parser->current.type == TOKEN_FLOAT ||
-           parser->current.type == TOKEN_CHAR || parser->current.type == TOKEN_VOID ||
-           parser->current.type == TOKEN_STRUCT || parser->current.type == TOKEN_IDENTIFIER;
+    if (parser->current.type == TOKEN_INT || parser->current.type == TOKEN_FLOAT ||
+        parser->current.type == TOKEN_CHAR || parser->current.type == TOKEN_VOID ||
+        parser->current.type == TOKEN_STRUCT) {
+        return 1;
+    }
+    if (parser->current.type == TOKEN_IDENTIFIER) {
+        return parser->next.type == TOKEN_STAR || parser->next.type == TOKEN_IDENTIFIER;
+    }
+    return 0;
 }
 
 static ASTNode *parser_expect(Parser *parser, int type, ASTNodeKind kind)
@@ -587,9 +593,7 @@ static ASTNode *parse_item_bloco(Parser *parser)
         parser->current.type == TOKEN_RETURN || parser->current.type == TOKEN_LBRACE) {
         return parse_instrucao(parser);
     }
-    if (parser_is_type_specifier_start(parser)) {
-        if (parser->current.type == TOKEN_IDENTIFIER && parser->next.type == TOKEN_LPAREN)
-            return parse_instrucao(parser);
+    if (parser_is_local_declaration_start(parser)) {
         return parse_declaracao_variavel_local(parser);
     }
     return parse_instrucao(parser);
