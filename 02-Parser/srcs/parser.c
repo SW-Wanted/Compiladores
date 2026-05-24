@@ -105,7 +105,7 @@ static const char *ast_kind_name(ASTNodeKind kind)
         case AST_DIRECTIVE_DEFINE: return "diretiva_define";
         case AST_TYPEDEF_DECL: return "declaracao_typedef";
         case AST_GENERAL_DECL: return "declaracao_geral";
-        case AST_TYPE_SPEC: return "tipo";
+        case AST_TYPE_SPECIFIER: return "tipo";
         case AST_DECLARATOR: return "declarador";
         case AST_POINTER: return "ponteiro";
         case AST_ARRAY: return "array";
@@ -247,14 +247,12 @@ static const char *declarator_name(const ASTNode *decl)
 
 static int type_specifier_token(const ASTNode *type_spec)
 {
-    if (!type_spec || type_spec->child_count == 0) return TOKEN_IDENTIFIER;
-    const ASTNode *child = type_spec->children[0];
-    if (!child || !child->text) return TOKEN_IDENTIFIER;
-    if (strcmp(child->text, "int") == 0) return TOKEN_INT;
-    if (strcmp(child->text, "float") == 0) return TOKEN_FLOAT;
-    if (strcmp(child->text, "char") == 0) return TOKEN_CHAR;
-    if (strcmp(child->text, "void") == 0) return TOKEN_VOID;
-    if (strcmp(child->text, "struct") == 0) return TOKEN_STRUCT;
+    if (!type_spec || !type_spec->text) return TOKEN_IDENTIFIER;
+    if (strcmp(type_spec->text, "int") == 0) return TOKEN_INT;
+    if (strcmp(type_spec->text, "float") == 0) return TOKEN_FLOAT;
+    if (strcmp(type_spec->text, "char") == 0) return TOKEN_CHAR;
+    if (strcmp(type_spec->text, "void") == 0) return TOKEN_VOID;
+    if (strcmp(type_spec->text, "struct") == 0) return TOKEN_STRUCT;
     return TOKEN_IDENTIFIER;
 }
 
@@ -381,24 +379,22 @@ static ASTNode *parse_declaracao_typedef(Parser *parser)
 
 static ASTNode *parse_type_specifier(Parser *parser)
 {
-    ASTNode *node = ast_new(AST_TYPE_SPEC, NULL, -1, -1);
-    if (parser_match(parser, TOKEN_INT)) {
-        ast_add_child(node, ast_leaf(AST_IDENTIFIER, "int"));
-    } else if (parser_match(parser, TOKEN_FLOAT)) {
-        ast_add_child(node, ast_leaf(AST_IDENTIFIER, "float"));
-    } else if (parser_match(parser, TOKEN_CHAR)) {
-        ast_add_child(node, ast_leaf(AST_IDENTIFIER, "char"));
-    } else if (parser_match(parser, TOKEN_VOID)) {
-        ast_add_child(node, ast_leaf(AST_IDENTIFIER, "void"));
-    } else if (parser_match(parser, TOKEN_STRUCT)) {
-        ast_add_child(node, ast_leaf(AST_IDENTIFIER, "struct"));
+    if (parser->current.type == TOKEN_INT) {
+        return parser_expect(parser, TOKEN_INT, AST_TYPE_SPECIFIER);
+    } else if (parser->current.type == TOKEN_FLOAT) {
+        return parser_expect(parser, TOKEN_FLOAT, AST_TYPE_SPECIFIER);
+    } else if (parser->current.type == TOKEN_CHAR) {
+        return parser_expect(parser, TOKEN_CHAR, AST_TYPE_SPECIFIER);
+    } else if (parser->current.type == TOKEN_VOID) {
+        return parser_expect(parser, TOKEN_VOID, AST_TYPE_SPECIFIER);
+    } else if (parser->current.type == TOKEN_STRUCT) {
+        ASTNode *node = parser_expect(parser, TOKEN_STRUCT, AST_TYPE_SPECIFIER);
         ast_add_child(node, parse_nome_ou_corpo_struct(parser));
+        return node;
     } else if (parser->current.type == TOKEN_IDENTIFIER) {
-        ast_add_child(node, parser_expect(parser, TOKEN_IDENTIFIER, AST_IDENTIFIER));
-    } else {
-        ast_add_child(node, parser_error(parser, "esperado especificador de tipo"));
+        return parser_expect(parser, TOKEN_IDENTIFIER, AST_TYPE_SPECIFIER);
     }
-    return node;
+    return parser_error(parser, "esperado especificador de tipo");
 }
 
 static ASTNode *parse_nome_ou_corpo_struct(Parser *parser)
