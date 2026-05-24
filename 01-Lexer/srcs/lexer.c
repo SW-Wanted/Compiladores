@@ -114,7 +114,8 @@ static Token scan_identifier(Lexer *lexer)
         if (len < MAX_LEXEME_LEN - 1)
             buf[len++] = c;
     }
-    volta_caractere(lexer);
+    if (c != '\0')
+        volta_caractere(lexer);
     buf[len] = '\0';
 
     int type = lookup_keyword(buf);
@@ -142,7 +143,8 @@ static Token scan_number(Lexer *lexer)
         }
     }
 
-    volta_caractere(lexer);
+    if (c != '\0')
+        volta_caractere(lexer);
     buf[len] = '\0';
 
     int type = is_float ? TOKEN_FLOAT_LITERAL : TOKEN_INT_LITERAL;
