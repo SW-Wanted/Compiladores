@@ -143,7 +143,7 @@ void parser_print_ast(const ASTNode *node, int indent)
     printf("%s", ast_kind_name(node->kind));
     if (node->text)
         printf(": %s", node->text);
-    if (node->line >= 0 && node->column >= 0)
+    if (node->kind == AST_ERROR && node->line >= 0 && node->column >= 0)
         printf(" [linha %d, coluna %d]", node->line, node->column);
     printf("\n");
     for (int i = 0; i < node->child_count; i++)
