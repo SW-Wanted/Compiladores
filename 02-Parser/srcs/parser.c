@@ -565,7 +565,8 @@ static ASTNode *parse_sufixo_array_opcional(Parser *parser)
     ASTNode *node = ast_new(AST_ARRAY, NULL, -1, -1);
     while (parser->current.type == TOKEN_LBRACKET) {
         parser_expect(parser, TOKEN_LBRACKET, AST_ERROR);
-        ast_add_child(node, parse_expressao(parser));
+        if (parser->current.type != TOKEN_RBRACKET)
+            ast_add_child(node, parse_expressao(parser));
         parser_expect(parser, TOKEN_RBRACKET, AST_ERROR);
     }
     if (node->child_count == 0) {
