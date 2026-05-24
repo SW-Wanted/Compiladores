@@ -2,11 +2,11 @@
 const char *token_name(int type)
 {
     switch (type) {
-        case TOKEN_IDENTIFIER:     return "TOKEN_IDENTIFIER";
-        case TOKEN_INT_LITERAL:    return "TOKEN_INT_LITERAL";
-        case TOKEN_FLOAT_LITERAL:  return "TOKEN_FLOAT_LITERAL";
-        case TOKEN_CHAR_LITERAL:   return "TOKEN_CHAR_LITERAL";
-        case TOKEN_STRING_LITERAL: return "TOKEN_STRING_LITERAL";
+        case TOKEN_IDENTIFIER:     return "identificador";
+        case TOKEN_INT_LITERAL:    return "literal_int";
+        case TOKEN_FLOAT_LITERAL:  return "literal_float";
+        case TOKEN_CHAR_LITERAL:   return "literal_char";
+        case TOKEN_STRING_LITERAL: return "string_literal";
 
         case TOKEN_INT:     return "int";
         case TOKEN_FLOAT:   return "float";
@@ -22,6 +22,16 @@ const char *token_name(int type)
         case TOKEN_TYPEDEF: return "typedef";
         case TOKEN_INCLUDE: return "include";
         case TOKEN_DEFINE:  return "define";
+        case TOKEN_DOUBLE:  return "double";
+        case TOKEN_LONG:    return "long";
+        case TOKEN_SHORT:   return "short";
+        case TOKEN_STRING:  return "string";
+        case TOKEN_UNION:   return "union";
+        case TOKEN_SWITCH:  return "switch";
+        case TOKEN_CASE:    return "case";
+        case TOKEN_DEFAULT: return "default";
+        case TOKEN_BREAK:   return "break";
+        case TOKEN_CONTINUE:return "continue";
 
         case TOKEN_PLUS:    return "+";
         case TOKEN_MINUS:   return "-";
@@ -30,6 +40,9 @@ const char *token_name(int type)
         case TOKEN_PERCENT: return "%";
         case TOKEN_PLUS_PLUS: return "++";
         case TOKEN_MINUS_MINUS: return "--";
+        case TOKEN_LSHIFT:  return "<<";
+        case TOKEN_RSHIFT:  return ">>";
+        case TOKEN_ARROW:   return "->";
 
         case TOKEN_EQ:  return "==";
         case TOKEN_NEQ: return "!=";
@@ -41,6 +54,8 @@ const char *token_name(int type)
         case TOKEN_AND: return "&&";
         case TOKEN_OR:  return "||";
         case TOKEN_NOT: return "!";
+        case TOKEN_PIPE: return "|";
+        case TOKEN_CARET:return "^";
 
         case TOKEN_ASSIGN:       return "=";
         case TOKEN_PLUS_ASSIGN:  return "+=";
@@ -48,6 +63,11 @@ const char *token_name(int type)
         case TOKEN_STAR_ASSIGN:  return "*=";
         case TOKEN_SLASH_ASSIGN: return "/=";
         case TOKEN_PERCENT_ASSIGN: return "%=";
+        case TOKEN_AMP_ASSIGN:   return "&=";
+        case TOKEN_PIPE_ASSIGN:  return "|=";
+        case TOKEN_CARET_ASSIGN: return "^=";
+        case TOKEN_LSHIFT_ASSIGN:return "<<=";
+        case TOKEN_RSHIFT_ASSIGN:return ">>=";
 
         case TOKEN_LPAREN:    return "(";
         case TOKEN_RPAREN:    return ")";
@@ -62,8 +82,8 @@ const char *token_name(int type)
         case TOKEN_HASH:      return "#";
         case TOKEN_AMP:       return "&";
 
-        case TOKEN_EOF:     return "TOKEN_EOF";
-        case TOKEN_UNKNOWN: return "TOKEN_UNKNOWN";
+        case TOKEN_EOF:     return "EOF";
+        case TOKEN_UNKNOWN: return "desconhecido";
 
         default: return "???";
     }

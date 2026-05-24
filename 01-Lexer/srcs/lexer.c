@@ -11,6 +11,10 @@ static const Keyword KEYWORDS[] = {
     { "float",   TOKEN_FLOAT   },
     { "char",    TOKEN_CHAR    },
     { "void",    TOKEN_VOID    },
+    { "double",  TOKEN_DOUBLE  },
+    { "long",    TOKEN_LONG    },
+    { "short",   TOKEN_SHORT   },
+    { "string",  TOKEN_STRING  },
     { "if",      TOKEN_IF      },
     { "else",    TOKEN_ELSE    },
     { "while",   TOKEN_WHILE   },
@@ -18,6 +22,12 @@ static const Keyword KEYWORDS[] = {
     { "do",      TOKEN_DO      },
     { "return",  TOKEN_RETURN  },
     { "struct",  TOKEN_STRUCT  },
+    { "union",   TOKEN_UNION   },
+    { "switch",  TOKEN_SWITCH  },
+    { "case",    TOKEN_CASE    },
+    { "default", TOKEN_DEFAULT },
+    { "break",   TOKEN_BREAK   },
+    { "continue",TOKEN_CONTINUE },
     { "typedef", TOKEN_TYPEDEF },
     { "include", TOKEN_INCLUDE },
     { "define",  TOKEN_DEFINE  },
@@ -251,6 +261,7 @@ Token analex(Lexer *lexer)
         case '-':
             if (next == '-') { ler_caractere(lexer); return make_token(TOKEN_MINUS_MINUS, "--", line, column); }
             if (next == '=') { ler_caractere(lexer); return make_token(TOKEN_MINUS_ASSIGN, "-=", line, column); }
+            if (next == '>') { ler_caractere(lexer); return make_token(TOKEN_ARROW, "->", line, column); }
             return make_token(TOKEN_MINUS, "-", line, column);
 
         case '*':
@@ -260,6 +271,24 @@ Token analex(Lexer *lexer)
             if (next == '=') { ler_caractere(lexer); return make_token(TOKEN_PERCENT_ASSIGN, "%=", line, column); }
             return make_token(TOKEN_PERCENT, "%", line, column);
 
+        case '<':
+            if (next == '<') {
+                ler_caractere(lexer);
+                if (peek(lexer) == '=') { ler_caractere(lexer); return make_token(TOKEN_LSHIFT_ASSIGN, "<<=", line, column); }
+                return make_token(TOKEN_LSHIFT, "<<", line, column);
+            }
+            if (next == '=') { ler_caractere(lexer); return make_token(TOKEN_LEQ, "<=", line, column); }
+            return make_token(TOKEN_LT, "<", line, column);
+
+        case '>':
+            if (next == '>') {
+                ler_caractere(lexer);
+                if (peek(lexer) == '=') { ler_caractere(lexer); return make_token(TOKEN_RSHIFT_ASSIGN, ">>=", line, column); }
+                return make_token(TOKEN_RSHIFT, ">>", line, column);
+            }
+            if (next == '=') { ler_caractere(lexer); return make_token(TOKEN_GEQ, ">=", line, column); }
+            return make_token(TOKEN_GT, ">", line, column);
+
         case '=':
             if (next == '=') { ler_caractere(lexer); return make_token(TOKEN_EQ,  "==", line, column); }
             return make_token(TOKEN_ASSIGN, "=", line, column);
@@ -268,21 +297,19 @@ Token analex(Lexer *lexer)
             if (next == '=') { ler_caractere(lexer); return make_token(TOKEN_NEQ, "!=", line, column); }
             return make_token(TOKEN_NOT, "!", line, column);
 
-        case '<':
-            if (next == '=') { ler_caractere(lexer); return make_token(TOKEN_LEQ, "<=", line, column); }
-            return make_token(TOKEN_LT, "<", line, column);
-
-        case '>':
-            if (next == '=') { ler_caractere(lexer); return make_token(TOKEN_GEQ, ">=", line, column); }
-            return make_token(TOKEN_GT, ">", line, column);
-
         case '&':
             if (next == '&') { ler_caractere(lexer); return make_token(TOKEN_AND, "&&", line, column); }
+            if (next == '=') { ler_caractere(lexer); return make_token(TOKEN_AMP_ASSIGN, "&=", line, column); }
             return make_token(TOKEN_AMP, "&", line, column);
 
         case '|':
             if (next == '|') { ler_caractere(lexer); return make_token(TOKEN_OR, "||", line, column); }
-            break;
+            if (next == '=') { ler_caractere(lexer); return make_token(TOKEN_PIPE_ASSIGN, "|=", line, column); }
+            return make_token(TOKEN_PIPE, "|", line, column);
+
+        case '^':
+            if (next == '=') { ler_caractere(lexer); return make_token(TOKEN_CARET_ASSIGN, "^=", line, column); }
+            return make_token(TOKEN_CARET, "^", line, column);
 
         case '(': return make_token(TOKEN_LPAREN,    "(", line, column);
         case ')': return make_token(TOKEN_RPAREN,    ")", line, column);

@@ -40,84 +40,124 @@
 #define TOKEN_INCLUDE        22
 /** @brief Diretiva define. */
 #define TOKEN_DEFINE         23
+/** @brief Palavra reservada double. */
+#define TOKEN_DOUBLE         24
+/** @brief Palavra reservada long. */
+#define TOKEN_LONG           25
+/** @brief Palavra reservada short. */
+#define TOKEN_SHORT          26
+/** @brief Palavra reservada string. */
+#define TOKEN_STRING         27
+/** @brief Palavra reservada union. */
+#define TOKEN_UNION          28
+/** @brief Palavra reservada switch. */
+#define TOKEN_SWITCH         29
+/** @brief Palavra reservada case. */
+#define TOKEN_CASE           30
+/** @brief Palavra reservada default. */
+#define TOKEN_DEFAULT        31
+/** @brief Palavra reservada break. */
+#define TOKEN_BREAK          32
+/** @brief Palavra reservada continue. */
+#define TOKEN_CONTINUE       33
 
 /** @brief Operador +. */
-#define TOKEN_PLUS           30
+#define TOKEN_PLUS           40
 /** @brief Operador -. */
-#define TOKEN_MINUS          31
+#define TOKEN_MINUS          41
 /** @brief Operador *. */
-#define TOKEN_STAR           32
+#define TOKEN_STAR           42
 /** @brief Operador /. */
-#define TOKEN_SLASH          33
+#define TOKEN_SLASH          43
 /** @brief Operador %. */
-#define TOKEN_PERCENT        34
+#define TOKEN_PERCENT        44
 /** @brief Operador ++. */
-#define TOKEN_PLUS_PLUS      35
+#define TOKEN_PLUS_PLUS      45
 /** @brief Operador --. */
-#define TOKEN_MINUS_MINUS    36
+#define TOKEN_MINUS_MINUS    46
+/** @brief Operador <<. */
+#define TOKEN_LSHIFT         47
+/** @brief Operador >>. */
+#define TOKEN_RSHIFT         48
+/** @brief Operador ->. */
+#define TOKEN_ARROW          49
 
 /** @brief Operador ==. */
-#define TOKEN_EQ             40
+#define TOKEN_EQ             50
 /** @brief Operador !=. */
-#define TOKEN_NEQ            41
+#define TOKEN_NEQ            51
 /** @brief Operador <. */
-#define TOKEN_LT             42
+#define TOKEN_LT             52
 /** @brief Operador >. */
-#define TOKEN_GT             43
+#define TOKEN_GT             53
 /** @brief Operador <=. */
-#define TOKEN_LEQ            44
+#define TOKEN_LEQ            54
 /** @brief Operador >=. */
-#define TOKEN_GEQ            45
+#define TOKEN_GEQ            55
 
 /** @brief Operador logico &&. */
-#define TOKEN_AND            50
+#define TOKEN_AND            60
 /** @brief Operador logico ||. */
-#define TOKEN_OR             51
+#define TOKEN_OR             61
 /** @brief Operador logico !. */
-#define TOKEN_NOT            52
+#define TOKEN_NOT            62
+/** @brief Operador bitwise |. */
+#define TOKEN_PIPE           63
+/** @brief Operador bitwise ^. */
+#define TOKEN_CARET          64
 
 /** @brief Operador de atribuicao =. */
-#define TOKEN_ASSIGN         60
+#define TOKEN_ASSIGN         70
 /** @brief Operador de atribuicao +=. */
-#define TOKEN_PLUS_ASSIGN    61
+#define TOKEN_PLUS_ASSIGN    71
 /** @brief Operador de atribuicao -=. */
-#define TOKEN_MINUS_ASSIGN   62
+#define TOKEN_MINUS_ASSIGN   72
 /** @brief Operador de atribuicao *=. */
-#define TOKEN_STAR_ASSIGN    63
+#define TOKEN_STAR_ASSIGN    73
 /** @brief Operador de atribuicao /=. */
-#define TOKEN_SLASH_ASSIGN   64
+#define TOKEN_SLASH_ASSIGN   74
 /** @brief Operador de atribuicao %=. */
-#define TOKEN_PERCENT_ASSIGN 65
+ #define TOKEN_PERCENT_ASSIGN 75
+/** @brief Operador de atribuicao &=. */
+#define TOKEN_AMP_ASSIGN     76
+/** @brief Operador de atribuicao |=. */
+#define TOKEN_PIPE_ASSIGN    77
+/** @brief Operador de atribuicao ^=. */
+#define TOKEN_CARET_ASSIGN   78
+/** @brief Operador de atribuicao <<=. */
+#define TOKEN_LSHIFT_ASSIGN  79
+/** @brief Operador de atribuicao >>=. */
+#define TOKEN_RSHIFT_ASSIGN  80
 
 /** @brief Delimitador (. */
-#define TOKEN_LPAREN         70
+#define TOKEN_LPAREN         90
 /** @brief Delimitador ). */
-#define TOKEN_RPAREN         71
+#define TOKEN_RPAREN         91
 /** @brief Delimitador {. */
-#define TOKEN_LBRACE         72
+#define TOKEN_LBRACE         92
 /** @brief Delimitador }. */
-#define TOKEN_RBRACE         73
+#define TOKEN_RBRACE         93
 /** @brief Delimitador [. */
-#define TOKEN_LBRACKET       74
+#define TOKEN_LBRACKET       94
 /** @brief Delimitador ]. */
-#define TOKEN_RBRACKET       75
+#define TOKEN_RBRACKET       95
 /** @brief Delimitador ;. */
-#define TOKEN_SEMICOLON      76
+#define TOKEN_SEMICOLON      96
 /** @brief Delimitador ,. */
-#define TOKEN_COMMA          77
+#define TOKEN_COMMA          97
 /** @brief Delimitador .. */
-#define TOKEN_DOT            78
+#define TOKEN_DOT            98
 /** @brief Delimitador :. */
-#define TOKEN_COLON          79
+#define TOKEN_COLON          99
 /** @brief Delimitador #. */
-#define TOKEN_HASH           80
+#define TOKEN_HASH           100
 /** @brief Simbolo &. */
-#define TOKEN_AMP            81
+#define TOKEN_AMP            101
 
 /** @brief Fim de arquivo. */
-#define TOKEN_EOF            99
+#define TOKEN_EOF            200
 /** @brief Token nao reconhecido. */
-#define TOKEN_UNKNOWN       100
+#define TOKEN_UNKNOWN       201
 
 /**
  * @brief Tamanho maximo do lexema armazenado em um token.
