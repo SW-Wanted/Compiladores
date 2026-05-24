@@ -12,6 +12,7 @@ typedef struct {
     const char *source;
     int         pos;
     int         line;
+    int         col;
 } Lexer;
 
 /**

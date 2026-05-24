@@ -128,6 +128,7 @@ typedef struct {
     int  type;
     char lexeme[MAX_LEXEME_LEN];
     int  line;
+    int  column;
 } Token;
 
 /**
