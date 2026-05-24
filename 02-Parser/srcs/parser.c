@@ -41,6 +41,7 @@ static ASTNode *parse_instrucao_return(Parser *parser);
 static ASTNode *parse_expressao(Parser *parser);
 static ASTNode *parse_atribuicao(Parser *parser);
 static ASTNode *parse_logico_ou(Parser *parser);
+static ASTNode *parser_error(Parser *parser, const char *message);
 static ASTNode *parse_logico_e(Parser *parser);
 static ASTNode *parse_igualdade(Parser *parser);
 static ASTNode *parse_relacional(Parser *parser);
@@ -55,19 +56,21 @@ static int type_specifier_token(const ASTNode *type_spec);
 static void insert_symbol(Parser *parser, const ASTNode *type_spec, const ASTNode *decl, SymbolKind kind, int line);
 static void insert_declarators(Parser *parser, const ASTNode *type_spec, const ASTNode *node, SymbolKind kind, int line);
 
-static ASTNode *ast_new(ASTNodeKind kind, const char *text)
+static ASTNode *ast_new(ASTNodeKind kind, const char *text, int line, int column)
 {
     ASTNode *node = malloc(sizeof(ASTNode));
     node->kind = kind;
     node->text = text ? strdup(text) : NULL;
     node->children = NULL;
     node->child_count = 0;
+    node->line = line;
+    node->column = column;
     return node;
 }
 
 static ASTNode *ast_leaf(ASTNodeKind kind, const char *text)
 {
-    return ast_new(kind, text);
+    return ast_new(kind, text, -1, -1);
 }
 
 static void ast_add_child(ASTNode *parent, ASTNode *child)
@@ -80,7 +83,7 @@ static void ast_add_child(ASTNode *parent, ASTNode *child)
 
 static ASTNode *ast_binary(ASTNodeKind kind, const char *op, ASTNode *left, ASTNode *right)
 {
-    ASTNode *node = ast_new(kind, op);
+    ASTNode *node = ast_new(kind, op, -1, -1);
     ast_add_child(node, left);
     ast_add_child(node, right);
     return node;
@@ -88,7 +91,7 @@ static ASTNode *ast_binary(ASTNodeKind kind, const char *op, ASTNode *left, ASTN
 
 static ASTNode *ast_unary(ASTNodeKind kind, const char *op, ASTNode *operand)
 {
-    ASTNode *node = ast_new(kind, op);
+    ASTNode *node = ast_new(kind, op, -1, -1);
     ast_add_child(node, operand);
     return node;
 }
@@ -140,6 +143,8 @@ void parser_print_ast(const ASTNode *node, int indent)
     printf("%s", ast_kind_name(node->kind));
     if (node->text)
         printf(": %s", node->text);
+    if (node->line >= 0 && node->column >= 0)
+        printf(" [linha %d, coluna %d]", node->line, node->column);
     printf("\n");
     for (int i = 0; i < node->child_count; i++)
         parser_print_ast(node->children[i], indent + 1);
@@ -206,11 +211,11 @@ static ASTNode *parser_expect(Parser *parser, int type, ASTNodeKind kind)
     if (parser->current.type == type) {
         ASTNode *node = NULL;
         if (kind != AST_ERROR)
-            node = ast_leaf(kind, parser->current.lexeme);
+            node = ast_new(kind, parser->current.lexeme, parser->current.line, parser->current.column);
         parser_next(parser);
         return node;
     }
-    ASTNode *error = ast_leaf(AST_ERROR, parser->current.lexeme);
+    ASTNode *error = ast_new(AST_ERROR, parser->current.lexeme, parser->current.line, parser->current.column);
     parser_next(parser);
     return error;
 }
@@ -220,13 +225,13 @@ static ASTNode *parser_expect_semicolon(Parser *parser)
     if (parser->current.type == TOKEN_SEMICOLON)
         return parser_expect(parser, TOKEN_SEMICOLON, AST_ERROR);
     if (parser_is_sync_token(parser))
-        return ast_leaf(AST_ERROR, "esperado ';'");
+        return parser_error(parser, "esperado ';'");
     return parser_expect(parser, TOKEN_SEMICOLON, AST_ERROR);
 }
 
-static ASTNode *parser_error(const char *message)
+static ASTNode *parser_error(Parser *parser, const char *message)
 {
-    return ast_leaf(AST_ERROR, message);
+    return ast_new(AST_ERROR, message, parser->current.line, parser->current.column);
 }
 
 static const char *declarator_name(const ASTNode *decl)
@@ -284,7 +289,7 @@ static void insert_declarators(Parser *parser, const ASTNode *type_spec, const A
 
 static ASTNode *parse_programa(Parser *parser)
 {
-    ASTNode *node = ast_new(AST_PROGRAM, NULL);
+    ASTNode *node = ast_new(AST_PROGRAM, NULL, -1, -1);
     ast_add_child(node, parse_lista_declaracoes_globais(parser));
     parser_expect(parser, TOKEN_EOF, AST_ERROR);
     return node;
@@ -292,7 +297,7 @@ static ASTNode *parse_programa(Parser *parser)
 
 static ASTNode *parse_lista_declaracoes_globais(Parser *parser)
 {
-    ASTNode *node = ast_new(AST_DECLARATOR_LIST, NULL);
+    ASTNode *node = ast_new(AST_DECLARATOR_LIST, NULL, -1, -1);
     while (parser->current.type != TOKEN_EOF) {
         ast_add_child(node, parse_declaracao_global(parser));
     }
@@ -315,12 +320,12 @@ static ASTNode *parse_directiva(Parser *parser)
         return parse_diretiva_include(parser);
     if (parser->current.type == TOKEN_DEFINE)
         return parse_diretiva_define(parser);
-    return parser_error("diretiva desconhecida");
+    return parser_error(parser, "diretiva desconhecida");
 }
 
 static ASTNode *parse_diretiva_include(Parser *parser)
 {
-    ASTNode *node = ast_new(AST_DIRECTIVE_INCLUDE, NULL);
+    ASTNode *node = ast_new(AST_DIRECTIVE_INCLUDE, NULL, -1, -1);
     parser_expect(parser, TOKEN_INCLUDE, AST_IDENTIFIER);
     if (parser->current.type == TOKEN_LT) {
         parser_expect(parser, TOKEN_LT, AST_ERROR);
@@ -330,14 +335,14 @@ static ASTNode *parse_diretiva_include(Parser *parser)
         ast_add_child(node, ast_leaf(AST_INCLUDE_PATH, parser->current.lexeme));
         parser_next(parser);
     } else {
-        ast_add_child(node, parser_error("esperado <nome> ou string em include"));
+        ast_add_child(node, parser_error(parser, "esperado <nome> ou string em include"));
     }
     return node;
 }
 
 static ASTNode *parse_diretiva_define(Parser *parser)
 {
-    ASTNode *node = ast_new(AST_DIRECTIVE_DEFINE, NULL);
+    ASTNode *node = ast_new(AST_DIRECTIVE_DEFINE, NULL, -1, -1);
     parser_expect(parser, TOKEN_DEFINE, AST_IDENTIFIER);
     ast_add_child(node, parser_expect(parser, TOKEN_IDENTIFIER, AST_IDENTIFIER));
     if (parser->current.type == TOKEN_INT_LITERAL || parser->current.type == TOKEN_FLOAT_LITERAL ||
@@ -350,7 +355,7 @@ static ASTNode *parse_diretiva_define(Parser *parser)
 
 static ASTNode *parse_nome_ficheiro(Parser *parser)
 {
-    ASTNode *node = ast_new(AST_INCLUDE_PATH, NULL);
+    ASTNode *node = ast_new(AST_INCLUDE_PATH, NULL, -1, -1);
     ast_add_child(node, parser_expect(parser, TOKEN_IDENTIFIER, AST_IDENTIFIER));
     while (parser->current.type == TOKEN_SLASH || parser->current.type == TOKEN_DOT) {
         ast_add_child(node, ast_leaf(AST_LITERAL, parser->current.lexeme));
@@ -362,7 +367,7 @@ static ASTNode *parse_nome_ficheiro(Parser *parser)
 
 static ASTNode *parse_declaracao_typedef(Parser *parser)
 {
-    ASTNode *node = ast_new(AST_TYPEDEF_DECL, NULL);
+    ASTNode *node = ast_new(AST_TYPEDEF_DECL, NULL, -1, -1);
     parser_expect(parser, TOKEN_TYPEDEF, AST_IDENTIFIER);
     int decl_line = parser->current.line;
     ASTNode *type_spec = parse_type_specifier(parser);
@@ -376,7 +381,7 @@ static ASTNode *parse_declaracao_typedef(Parser *parser)
 
 static ASTNode *parse_type_specifier(Parser *parser)
 {
-    ASTNode *node = ast_new(AST_TYPE_SPEC, NULL);
+    ASTNode *node = ast_new(AST_TYPE_SPEC, NULL, -1, -1);
     if (parser_match(parser, TOKEN_INT)) {
         ast_add_child(node, ast_leaf(AST_IDENTIFIER, "int"));
     } else if (parser_match(parser, TOKEN_FLOAT)) {
@@ -391,7 +396,7 @@ static ASTNode *parse_type_specifier(Parser *parser)
     } else if (parser->current.type == TOKEN_IDENTIFIER) {
         ast_add_child(node, parser_expect(parser, TOKEN_IDENTIFIER, AST_IDENTIFIER));
     } else {
-        ast_add_child(node, parser_error("esperado especificador de tipo"));
+        ast_add_child(node, parser_error(parser, "esperado especificador de tipo"));
     }
     return node;
 }
@@ -399,7 +404,7 @@ static ASTNode *parse_type_specifier(Parser *parser)
 static ASTNode *parse_nome_ou_corpo_struct(Parser *parser)
 {
     if (parser->current.type == TOKEN_IDENTIFIER) {
-        ASTNode *node = ast_new(AST_IDENTIFIER, NULL);
+        ASTNode *node = ast_new(AST_IDENTIFIER, NULL, -1, -1);
         ast_add_child(node, parser_expect(parser, TOKEN_IDENTIFIER, AST_IDENTIFIER));
         if (parser->current.type == TOKEN_LBRACE)
             ast_add_child(node, parse_corpo_campos(parser));
@@ -410,7 +415,7 @@ static ASTNode *parse_nome_ou_corpo_struct(Parser *parser)
 
 static ASTNode *parse_corpo_campos(Parser *parser)
 {
-    ASTNode *node = ast_new(AST_BLOCK, NULL);
+    ASTNode *node = ast_new(AST_BLOCK, NULL, -1, -1);
     parser_expect(parser, TOKEN_LBRACE, AST_ERROR);
     while (parser->current.type != TOKEN_RBRACE && parser->current.type != TOKEN_EOF) {
         ast_add_child(node, parse_campo(parser));
@@ -421,7 +426,7 @@ static ASTNode *parse_corpo_campos(Parser *parser)
 
 static ASTNode *parse_campo(Parser *parser)
 {
-    ASTNode *node = ast_new(AST_VAR_DECL, NULL);
+    ASTNode *node = ast_new(AST_VAR_DECL, NULL, -1, -1);
     ast_add_child(node, parse_type_specifier(parser));
     ast_add_child(node, parse_lista_declaradores_campo(parser));
     parser_expect(parser, TOKEN_SEMICOLON, AST_ERROR);
@@ -430,7 +435,7 @@ static ASTNode *parse_campo(Parser *parser)
 
 static ASTNode *parse_lista_declaradores_campo(Parser *parser)
 {
-    ASTNode *node = ast_new(AST_DECLARATOR_LIST, NULL);
+    ASTNode *node = ast_new(AST_DECLARATOR_LIST, NULL, -1, -1);
     ast_add_child(node, parse_declarator(parser));
     while (parser->current.type == TOKEN_COMMA) {
         parser_next(parser);
@@ -441,20 +446,20 @@ static ASTNode *parse_lista_declaradores_campo(Parser *parser)
 
 static ASTNode *parse_declarator(Parser *parser)
 {
-    ASTNode *node = ast_new(AST_DECLARATOR, NULL);
+    ASTNode *node = ast_new(AST_DECLARATOR, NULL, -1, -1);
     while (parser_match(parser, TOKEN_STAR))
         ast_add_child(node, ast_leaf(AST_POINTER, "*"));
     if (parser->current.type == TOKEN_IDENTIFIER)
         ast_add_child(node, parser_expect(parser, TOKEN_IDENTIFIER, AST_IDENTIFIER));
     else
-        ast_add_child(node, parser_error("esperado identificador"));
+        ast_add_child(node, parser_error(parser, "esperado identificador"));
     ast_add_child(node, parse_sufixo_array_opcional(parser));
     return node;
 }
 
 static ASTNode *parse_sufixo_array_opcional(Parser *parser)
 {
-    ASTNode *node = ast_new(AST_ARRAY, NULL);
+    ASTNode *node = ast_new(AST_ARRAY, NULL, -1, -1);
     while (parser->current.type == TOKEN_LBRACKET) {
         parser_expect(parser, TOKEN_LBRACKET, AST_ERROR);
         ast_add_child(node, parse_expressao(parser));
@@ -478,7 +483,7 @@ static ASTNode *parse_inicializacao_opcional(Parser *parser)
 
 static ASTNode *parse_mais_declaradores(Parser *parser)
 {
-    ASTNode *node = ast_new(AST_DECLARATOR_LIST, NULL);
+    ASTNode *node = ast_new(AST_DECLARATOR_LIST, NULL, -1, -1);
     while (parser->current.type == TOKEN_COMMA) {
         parser_next(parser);
         ast_add_child(node, parse_declarator(parser));
@@ -499,14 +504,14 @@ static ASTNode *parse_declaracao_geral(Parser *parser)
     ASTNode *type_spec = parse_type_specifier(parser);
     if (parser->current.type == TOKEN_SEMICOLON) {
         parser_expect(parser, TOKEN_SEMICOLON, AST_ERROR);
-        ASTNode *decl = ast_new(AST_GENERAL_DECL, NULL);
+        ASTNode *decl = ast_new(AST_GENERAL_DECL, NULL, -1, -1);
         ast_add_child(decl, type_spec);
         return decl;
     }
 
     ASTNode *decl = parse_declarator(parser);
     if (parser->current.type == TOKEN_LPAREN) {
-        ASTNode *func = ast_new(AST_FUNC_DECL, NULL);
+        ASTNode *func = ast_new(AST_FUNC_DECL, NULL, -1, -1);
         insert_symbol(parser, type_spec, decl, SYM_FUNCTION, decl_line);
         scope_enter(&parser->scope_table);
         ast_add_child(func, type_spec);
@@ -519,7 +524,7 @@ static ASTNode *parse_declaracao_geral(Parser *parser)
         return func;
     }
 
-    ASTNode *node = ast_new(AST_VAR_DECL, NULL);
+    ASTNode *node = ast_new(AST_VAR_DECL, NULL, -1, -1);
     insert_symbol(parser, type_spec, decl, SYM_VARIABLE, decl_line);
     ast_add_child(node, type_spec);
     ast_add_child(node, decl);
@@ -538,18 +543,18 @@ static ASTNode *parse_declaracao_geral(Parser *parser)
 static ASTNode *parse_parametros_opcionais(Parser *parser)
 {
     if (parser->current.type == TOKEN_VOID) {
-        ASTNode *node = ast_new(AST_PARAM_LIST, NULL);
+        ASTNode *node = ast_new(AST_PARAM_LIST, NULL, -1, -1);
         ast_add_child(node, parser_expect(parser, TOKEN_VOID, AST_IDENTIFIER));
         return node;
     }
     if (parser->current.type == TOKEN_RPAREN)
-        return ast_new(AST_PARAM_LIST, NULL);
+        return ast_new(AST_PARAM_LIST, NULL, -1, -1);
     return parse_lista_parametros(parser);
 }
 
 static ASTNode *parse_lista_parametros(Parser *parser)
 {
-    ASTNode *node = ast_new(AST_PARAM_LIST, NULL);
+    ASTNode *node = ast_new(AST_PARAM_LIST, NULL, -1, -1);
     ast_add_child(node, parse_parametro(parser));
     while (parser->current.type == TOKEN_COMMA) {
         parser_next(parser);
@@ -561,7 +566,7 @@ static ASTNode *parse_lista_parametros(Parser *parser)
 static ASTNode *parse_parametro(Parser *parser)
 {
     int decl_line = parser->current.line;
-    ASTNode *node = ast_new(AST_PARAM, NULL);
+    ASTNode *node = ast_new(AST_PARAM, NULL, -1, -1);
     ASTNode *type_spec = parse_type_specifier(parser);
     ASTNode *rest = parse_resto_parametro(parser);
     if (rest) {
@@ -584,7 +589,7 @@ static ASTNode *parse_resto_parametro(Parser *parser)
 
 static ASTNode *parse_bloco(Parser *parser)
 {
-    ASTNode *node = ast_new(AST_BLOCK, NULL);
+    ASTNode *node = ast_new(AST_BLOCK, NULL, -1, -1);
     parser_expect(parser, TOKEN_LBRACE, AST_ERROR);
     scope_enter(&parser->scope_table);
     while (parser->current.type != TOKEN_RBRACE && parser->current.type != TOKEN_EOF) {
@@ -597,7 +602,7 @@ static ASTNode *parse_bloco(Parser *parser)
 
 static ASTNode *parse_bloco_interno(Parser *parser)
 {
-    ASTNode *node = ast_new(AST_BLOCK, NULL);
+    ASTNode *node = ast_new(AST_BLOCK, NULL, -1, -1);
     parser_expect(parser, TOKEN_LBRACE, AST_ERROR);
     while (parser->current.type != TOKEN_RBRACE && parser->current.type != TOKEN_EOF) {
         ast_add_child(node, parse_item_bloco(parser));
@@ -625,7 +630,7 @@ static ASTNode *parse_item_bloco(Parser *parser)
 static ASTNode *parse_declaracao_variavel_local(Parser *parser)
 {
     int decl_line = parser->current.line;
-    ASTNode *node = ast_new(AST_VAR_DECL, NULL);
+    ASTNode *node = ast_new(AST_VAR_DECL, NULL, -1, -1);
     ASTNode *type_spec = parse_type_specifier(parser);
     ASTNode *decl = parse_declarator(parser);
     insert_symbol(parser, type_spec, decl, SYM_VARIABLE, decl_line);
@@ -653,7 +658,7 @@ static ASTNode *parse_instrucao(Parser *parser)
     if (parser->current.type == TOKEN_LBRACE) return parse_bloco(parser);
     if (parser->current.type == TOKEN_SEMICOLON) {
         parser_next(parser);
-        return ast_new(AST_EXPR_STMT, NULL);
+        return ast_new(AST_EXPR_STMT, NULL, -1, -1);
     }
     return parse_instrucao_expressao(parser);
 }
@@ -662,7 +667,7 @@ static ASTNode *parse_instrucao_expressao(Parser *parser)
 {
     ASTNode *expr = parse_expressao(parser);
     ASTNode *terminator = parser_expect_semicolon(parser);
-    ASTNode *node = ast_new(AST_EXPR_STMT, NULL);
+    ASTNode *node = ast_new(AST_EXPR_STMT, NULL, -1, -1);
     ast_add_child(node, expr);
     if (terminator)
         ast_add_child(node, terminator);
@@ -671,7 +676,7 @@ static ASTNode *parse_instrucao_expressao(Parser *parser)
 
 static ASTNode *parse_instrucao_if(Parser *parser)
 {
-    ASTNode *node = ast_new(AST_IF_STMT, NULL);
+    ASTNode *node = ast_new(AST_IF_STMT, NULL, -1, -1);
     parser_expect(parser, TOKEN_IF, AST_IDENTIFIER);
     parser_expect(parser, TOKEN_LPAREN, AST_ERROR);
     ast_add_child(node, parse_expressao(parser));
@@ -686,7 +691,7 @@ static ASTNode *parse_ramo_else_opcional(Parser *parser)
 {
     if (parser->current.type == TOKEN_ELSE) {
         parser_next(parser);
-        ASTNode *node = ast_new(AST_IF_STMT, "else");
+        ASTNode *node = ast_new(AST_IF_STMT, "else", -1, -1);
         ast_add_child(node, parse_instrucao(parser));
         return node;
     }
@@ -695,7 +700,7 @@ static ASTNode *parse_ramo_else_opcional(Parser *parser)
 
 static ASTNode *parse_instrucao_while(Parser *parser)
 {
-    ASTNode *node = ast_new(AST_WHILE_STMT, NULL);
+    ASTNode *node = ast_new(AST_WHILE_STMT, NULL, -1, -1);
     parser_expect(parser, TOKEN_WHILE, AST_IDENTIFIER);
     parser_expect(parser, TOKEN_LPAREN, AST_ERROR);
     ast_add_child(node, parse_expressao(parser));
@@ -706,7 +711,7 @@ static ASTNode *parse_instrucao_while(Parser *parser)
 
 static ASTNode *parse_instrucao_for(Parser *parser)
 {
-    ASTNode *node = ast_new(AST_FOR_STMT, NULL);
+    ASTNode *node = ast_new(AST_FOR_STMT, NULL, -1, -1);
     parser_expect(parser, TOKEN_FOR, AST_IDENTIFIER);
     parser_expect(parser, TOKEN_LPAREN, AST_ERROR);
     ast_add_child(node, parse_expressao_opcional(parser));
@@ -721,7 +726,7 @@ static ASTNode *parse_instrucao_for(Parser *parser)
 
 static ASTNode *parse_instrucao_do(Parser *parser)
 {
-    ASTNode *node = ast_new(AST_DO_WHILE_STMT, NULL);
+    ASTNode *node = ast_new(AST_DO_WHILE_STMT, NULL, -1, -1);
     parser_expect(parser, TOKEN_DO, AST_IDENTIFIER);
     ast_add_child(node, parse_instrucao(parser));
     parser_expect(parser, TOKEN_WHILE, AST_IDENTIFIER);
@@ -741,7 +746,7 @@ static ASTNode *parse_expressao_opcional(Parser *parser)
 
 static ASTNode *parse_instrucao_return(Parser *parser)
 {
-    ASTNode *node = ast_new(AST_RETURN_STMT, NULL);
+    ASTNode *node = ast_new(AST_RETURN_STMT, NULL, -1, -1);
     ast_add_child(node, parser_expect(parser, TOKEN_RETURN, AST_IDENTIFIER));
     ASTNode *expr = parse_expressao_opcional(parser);
     if (expr) ast_add_child(node, expr);
@@ -877,7 +882,7 @@ static ASTNode *parse_pos_fixo(Parser *parser)
             parser_next(parser);
             ASTNode *index = parse_expressao(parser);
             parser_expect(parser, TOKEN_RBRACKET, AST_ERROR);
-            ASTNode *sub = ast_new(AST_SUBSCRIPT_EXPR, NULL);
+            ASTNode *sub = ast_new(AST_SUBSCRIPT_EXPR, NULL, -1, -1);
             ast_add_child(sub, node);
             ast_add_child(sub, index);
             node = sub;
@@ -885,7 +890,7 @@ static ASTNode *parse_pos_fixo(Parser *parser)
         }
         if (parser->current.type == TOKEN_LPAREN) {
             parser_next(parser);
-            ASTNode *call = ast_new(AST_CALL_EXPR, NULL);
+            ASTNode *call = ast_new(AST_CALL_EXPR, NULL, -1, -1);
             ast_add_child(call, node);
             ast_add_child(call, parse_argumentos_opcionais(parser));
             parser_expect(parser, TOKEN_RPAREN, AST_ERROR);
@@ -894,7 +899,7 @@ static ASTNode *parse_pos_fixo(Parser *parser)
         }
         if (parser->current.type == TOKEN_DOT) {
             parser_next(parser);
-            ASTNode *member = ast_new(AST_MEMBER_EXPR, NULL);
+            ASTNode *member = ast_new(AST_MEMBER_EXPR, NULL, -1, -1);
             ast_add_child(member, node);
             ast_add_child(member, parser_expect(parser, TOKEN_IDENTIFIER, AST_IDENTIFIER));
             node = member;
@@ -921,12 +926,12 @@ static ASTNode *parse_primario(Parser *parser)
         parser_next(parser);
         return node;
     }
-    return parser_error("expressao esperada");
+    return parser_error(parser, "expressao esperada");
 }
 
 static ASTNode *parse_argumentos_opcionais(Parser *parser)
 {
-    ASTNode *node = ast_new(AST_PARAM_LIST, NULL);
+    ASTNode *node = ast_new(AST_PARAM_LIST, NULL, -1, -1);
     if (parser->current.type == TOKEN_RPAREN)
         return node;
     ast_add_child(node, parse_expressao(parser));

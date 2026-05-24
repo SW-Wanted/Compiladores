@@ -44,6 +44,8 @@ typedef struct ASTNode {
     char      *text;
     struct ASTNode **children;
     int         child_count;
+    int         line;
+    int         column;
 } ASTNode;
 
 typedef struct {
