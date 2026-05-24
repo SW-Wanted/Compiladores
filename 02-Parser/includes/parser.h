@@ -49,12 +49,22 @@ typedef struct ASTNode {
 } ASTNode;
 
 typedef struct {
+    char message[256];
+    int  line;
+    int  column;
+} ParserError;
+
+#define MAX_PARSER_ERRORS 256
+
+typedef struct {
     Lexer      lexer;
     ScopeTable scope_table;
     Token      current;
     Token      next;
     ASTNode   *root;
     char       pending_scope_name[MAX_SCOPE_NAME_LEN];
+    ParserError errors[MAX_PARSER_ERRORS];
+    int        error_count;
 } Parser;
 
 void parser_init(Parser *parser, const char *source);

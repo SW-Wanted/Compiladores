@@ -59,6 +59,7 @@ static void insert_declarators(Parser *parser, const ASTNode *type_spec, const A
 static void parser_clear_pending_scope(Parser *parser);
 static void parser_set_pending_scope(Parser *parser, const char *scope_name);
 static void build_child_scope_name(char *destination, size_t destination_size, const char *parent_scope, const char *segment);
+static void parser_add_error(Parser *parser, const char *message, int line, int column);
 
 static ASTNode *ast_new(ASTNodeKind kind, const char *text, int line, int column)
 {
@@ -219,6 +220,11 @@ static ASTNode *parser_expect(Parser *parser, int type, ASTNodeKind kind)
         parser_next(parser);
         return node;
     }
+    {
+        char message[128];
+        snprintf(message, sizeof(message), "esperado %s", token_name(type));
+        parser_add_error(parser, message, parser->current.line, parser->current.column);
+    }
     ASTNode *error = ast_new(AST_ERROR, parser->current.lexeme, parser->current.line, parser->current.column);
     parser_next(parser);
     return error;
@@ -235,7 +241,20 @@ static ASTNode *parser_expect_semicolon(Parser *parser)
 
 static ASTNode *parser_error(Parser *parser, const char *message)
 {
+    parser_add_error(parser, message, parser->current.line, parser->current.column);
     return ast_new(AST_ERROR, message, parser->current.line, parser->current.column);
+}
+
+static void parser_add_error(Parser *parser, const char *message, int line, int column)
+{
+    if (parser->error_count >= MAX_PARSER_ERRORS)
+        return;
+
+    ParserError *error = &parser->errors[parser->error_count++];
+    strncpy(error->message, message ? message : "erro de sintaxe", sizeof(error->message) - 1);
+    error->message[sizeof(error->message) - 1] = '\0';
+    error->line = line;
+    error->column = column;
 }
 
 static const char *declarator_name(const ASTNode *decl)
@@ -1084,4 +1103,5 @@ void parser_init(Parser *parser, const char *source)
     lexer_init(&parser->lexer, source);
     scope_table_init(&parser->scope_table);
     parser_clear_pending_scope(parser);
+    parser->error_count = 0;
 }

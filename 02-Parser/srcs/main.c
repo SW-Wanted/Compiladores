@@ -48,6 +48,20 @@ int main(int argc, char *argv[])
     printf("=== TABELA DE SIMBOLOS ===\n");
     scope_table_print(&parser.scope_table);
 
+    if (parser.error_count > 0) {
+        printf("=== TABELA DE ERROS ===\n");
+        printf("%-5s %-40s %-7s %-7s\n", "#", "MENSAGEM", "LINHA", "COLUNA");
+        printf("%-5s %-40s %-7s %-7s\n", "-----", "----------------------------------------", "-------", "-------");
+        for (int i = 0; i < parser.error_count; i++) {
+            printf("%-5d %-40s %-7d %-7d\n",
+                   i + 1,
+                   parser.errors[i].message,
+                   parser.errors[i].line,
+                   parser.errors[i].column);
+        }
+        printf("\n");
+    }
+
     parser_free_ast(parser.root);
 
     free(source);
