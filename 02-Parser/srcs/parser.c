@@ -127,7 +127,7 @@ static const char *ast_kind_name(ASTNodeKind kind)
         case AST_PARAM_LIST: return "lista_parametros";
         case AST_PARAM: return "parametro";
         case AST_BLOCK: return "bloco";
-        case AST_VAR_DECL: return "declaracao_variavel_local";
+        case AST_VAR_DECL: return "declaracao_variavel";
         case AST_FUNC_DECL: return "declaracao_funcao";
         case AST_EXPR_STMT: return "instrucao_expressao";
         case AST_IF_STMT: return "instrucao_if";
