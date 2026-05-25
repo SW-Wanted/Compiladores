@@ -9,3 +9,9 @@
 | 01 - [Analisador Léxico](./01-Lexer/) | Tokenização do código-fonte | ✅ Concluído |
 | 02 - [Analisador Sintático](./02-Parser/) | Verificação gramatical | ✅ Concluído  |
 | 03 - Analisador Semântico | Verificação de tipos e escopo | 🔒 Bloqueado  |
+
+---
+
+## 🔗 Referências
+- [Tabela de Símbolos](https://github.com/SW-Wanted/Compiladores/wiki/Symbol-Table)
+- [Gramática Sintática](https://github.com/SW-Wanted/Compiladores/wiki/Syntactic-Grammar)
