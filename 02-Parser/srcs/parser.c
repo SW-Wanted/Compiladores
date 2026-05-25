@@ -161,12 +161,23 @@ void parser_print_ast(const ASTNode *node, int indent)
     if (!node) return;
     for (int i = 0; i < indent; i++)
         printf("  ");
-    printf("%s", ast_kind_name(node->kind));
-    if (node->text)
-        printf(": %s", node->text);
-    if (node->kind == AST_ERROR && node->line >= 0 && node->column >= 0)
-        printf(" [linha %d, coluna %d]", node->line, node->column);
-    printf("\n");
+    if (node->kind == AST_ERROR) {
+        /* ANSI red */
+        printf("\x1b[31m");
+        printf("%s", ast_kind_name(node->kind));
+        if (node->text)
+            printf(": %s", node->text);
+        if (node->line >= 0 && node->column >= 0)
+            printf(" [linha %d, coluna %d]", node->line, node->column);
+        /* Reset color */
+        printf("\x1b[0m");
+        printf("\n");
+    } else {
+        printf("%s", ast_kind_name(node->kind));
+        if (node->text)
+            printf(": %s", node->text);
+        printf("\n");
+    }
     for (int i = 0; i < node->child_count; i++)
         parser_print_ast(node->children[i], indent + 1);
 }
