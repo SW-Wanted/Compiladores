@@ -23,6 +23,9 @@ typedef struct {
     int         column;
     int         param_count;
     int         active;
+    int         mem_address;
+    int         bytes_size;
+    char        assigned_value[128];
 } Symbol;
 
 #define MAX_SCOPE_SYMBOLS 1024
@@ -35,6 +38,7 @@ typedef struct {
     int    scope_depth;
     int    scope_start[MAX_SCOPE_DEPTH];
     char   scope_names[MAX_SCOPE_DEPTH][MAX_SCOPE_NAME_LEN];
+    int    scope_offset[MAX_SCOPE_DEPTH];
 } ScopeTable;
 
 void scope_table_init(ScopeTable *table);
@@ -47,4 +51,4 @@ Symbol *scope_lookup_current(ScopeTable *table, const char *name);
 const char *scope_current_name(const ScopeTable *table);
 void scope_table_print(const ScopeTable *table);
 
-#endif /* SCOPE_TABLE_H */
+#endif

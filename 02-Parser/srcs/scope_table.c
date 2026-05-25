@@ -24,6 +24,7 @@ void scope_table_init(ScopeTable *table)
     table->count = 0;
     table->current_scope = 0;
     table->scope_depth = 0;
+    for (int i = 0; i < MAX_SCOPE_DEPTH; i++) table->scope_offset[i] = 0;
     scope_enter_named(table, "Global");
 }
 
@@ -55,6 +56,14 @@ void scope_enter_named(ScopeTable *table, const char *scope_name)
         copy_scope_name(table->scope_names[table->scope_depth - 1], parent_scope);
     }
     table->current_scope++;
+    int new_index = table->scope_depth - 1;
+    if (new_index >= 0 && new_index < MAX_SCOPE_DEPTH) {
+        int parent_index = new_index - 1;
+        if (parent_index >= 0 && parent_index < MAX_SCOPE_DEPTH)
+            table->scope_offset[new_index] = table->scope_offset[parent_index];
+        else
+            table->scope_offset[new_index] = 0;
+    }
 }
 
 void scope_exit(ScopeTable *table)
@@ -85,6 +94,12 @@ int scope_insert(ScopeTable *table, const Symbol *symbol)
     }
     table->entries[table->count] = *symbol;
     table->entries[table->count].active = 1;
+    int depth_index = table->scope_depth - 1;
+    if (depth_index < 0) depth_index = 0;
+    int size = table->entries[table->count].bytes_size;
+    if (size <= 0) size = 4;
+    table->entries[table->count].mem_address = table->scope_offset[depth_index];
+    table->scope_offset[depth_index] += size;
     return table->count++;
 }
 
@@ -110,10 +125,10 @@ Symbol *scope_lookup_current(ScopeTable *table, const char *name)
 
 void scope_table_print(const ScopeTable *table)
 {
-    printf("\n%-5s %-20s %-12s %-18s %-28s %-10s %-7s %-7s\n",
-        "#", "IDENTIFICADOR", "TIPO", "TIPO_RETORNO", "ESCOPO", "PARAMETROS", "LINHA", "COLUNA");
-    printf("%-5s %-20s %-12s %-18s %-28s %-10s %-7s %-7s\n",
-        "-----", "--------------------", "------------", "------------------", "----------------------------", "----------", "-------", "-------");
+    printf("\n%-5s %-20s %-12s %-18s %-28s %-12s %-10s %-10s %-7s %-7s\n",
+        "#", "IDENTIFICADOR", "TIPO", "TIPO_RETORNO", "ESCOPO", "ENDERECO", "TAMANHO", "VALOR", "LINHA", "COLUNA");
+    printf("%-5s %-20s %-12s %-18s %-28s %-12s %-10s %-10s %-7s %-7s\n",
+        "-----", "--------------------", "------------", "------------------", "----------------------------", "----------", "----------", "----------", "-------", "-------");
     for (int i = 0; i < table->count; i++) {
         const Symbol *sym = &table->entries[i];
         const char *kind = "DESCONHECIDO";
@@ -124,13 +139,15 @@ void scope_table_print(const ScopeTable *table)
             case SYM_PARAM: kind = "PARAMETRO"; break;
             case SYM_ENUM_CONST: kind = "ENUM_CONST"; break;
         }
-                 printf("%-5d %-20s %-12s %-18s %-28s %-10d %-7d %-7d\n",
+        printf("%-5d %-20s %-12s %-18s %-28s 0x%-10x %-10d %-10s %-7d %-7d\n",
                i + 1,
                sym->name,
                kind,
                token_name(sym->type_token),
-             sym->scope_name[0] ? sym->scope_name : scope_current_name(table),
-               sym->param_count,
+               sym->scope_name[0] ? sym->scope_name : scope_current_name(table),
+               sym->mem_address,
+               sym->bytes_size,
+               sym->assigned_value[0] ? sym->assigned_value : "-",
                sym->line,
                sym->column);
     }
