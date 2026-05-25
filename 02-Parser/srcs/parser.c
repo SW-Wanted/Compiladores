@@ -228,7 +228,16 @@ static int parser_is_local_declaration_start(Parser *parser)
             strcmp(lex, "volatile") == 0 || strcmp(lex, "extern") == 0) {
             return 1;
         }
-        return parser->next.type == TOKEN_STAR || parser->next.type == TOKEN_IDENTIFIER;
+        if (parser->next.type == TOKEN_STAR)
+            return 1;
+        if (parser->next.type == TOKEN_IDENTIFIER) {
+            /* If current identifier is a typedef name in scope, treat as declaration */
+            Symbol *sym = scope_lookup(&parser->scope_table, lex);
+            if (sym && sym->kind == SYM_TYPEDEF)
+                return 1;
+            return 0;
+        }
+        return 0;
     }
     return 0;
 }
@@ -824,7 +833,9 @@ static ASTNode *parse_bloco(Parser *parser)
     }
     parser_clear_pending_scope(parser);
     while (parser->current.type != TOKEN_RBRACE && parser->current.type != TOKEN_EOF) {
-        ast_add_child(node, parse_item_bloco(parser));
+        ASTNode *child = parse_item_bloco(parser);
+        if (child && !(child->kind == AST_EXPR_STMT && child->child_count == 0))
+            ast_add_child(node, child);
     }
     scope_exit(&parser->scope_table);
     parser_expect(parser, TOKEN_RBRACE, AST_ERROR);
@@ -836,7 +847,9 @@ static ASTNode *parse_bloco_interno(Parser *parser)
     ASTNode *node = ast_new(AST_BLOCK, NULL, -1, -1);
     parser_expect(parser, TOKEN_LBRACE, AST_ERROR);
     while (parser->current.type != TOKEN_RBRACE && parser->current.type != TOKEN_EOF) {
-        ast_add_child(node, parse_item_bloco(parser));
+        ASTNode *child = parse_item_bloco(parser);
+        if (child && !(child->kind == AST_EXPR_STMT && child->child_count == 0))
+            ast_add_child(node, child);
     }
     parser_expect(parser, TOKEN_RBRACE, AST_ERROR);
     return node;
@@ -903,6 +916,15 @@ static ASTNode *parse_instrucao_expressao(Parser *parser)
 {
     ASTNode *expr = parse_expressao(parser);
     ASTNode *terminator = parser_expect_semicolon(parser);
+    /* If semicolon expectation produced an error, prefer returning the error node
+       instead of wrapping into an empty expression statement. Free expr to avoid leaks. */
+    if (terminator && terminator->kind == AST_ERROR) {
+        if (expr) parser_free_ast(expr);
+        return terminator;
+    }
+    /* If there's no expression and no terminator, return NULL (nothing to add).
+       This avoids creating empty instrucao_expressao nodes. */
+    if (!expr && !terminator) return NULL;
     ASTNode *node = ast_new(AST_EXPR_STMT, NULL, -1, -1);
     ast_add_child(node, expr);
     if (terminator)
