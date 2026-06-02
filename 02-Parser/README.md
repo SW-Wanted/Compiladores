@@ -7,7 +7,7 @@ Um analisador sintático (análise sintática ou Parser) faz a verificação da 
 
 **Primeiro cada estudante deve pesquisar a gramática correspondente a sua linguagem de estudo**
 
-Como o método para a construção do analisador sintático é top-down (recursivo descendente sem retrocesso (backtracking) a gramática precisa sofrer algumas transformações como:
+Como o método para a construção do analisador sintático é top-down (recursivo descendente sem retrocesso (backtracking)) a gramática precisa sofrer algumas transformações como:
 
 - a) Eliminar a ambiguidade nas regras de produções:
 - b) Eliminar recursividade à esquerda;
