@@ -277,6 +277,55 @@ static int parser_is_sync_token(Parser *parser)
            parser->current.type == TOKEN_IDENTIFIER || parser->current.type == TOKEN_EOF;
 }
 
+static int parser_is_global_declaration_start(Parser *parser)
+{
+    return parser->current.type == TOKEN_HASH || parser->current.type == TOKEN_TYPEDEF ||
+           parser->current.type == TOKEN_INT || parser->current.type == TOKEN_FLOAT ||
+           parser->current.type == TOKEN_CHAR || parser->current.type == TOKEN_VOID ||
+           parser->current.type == TOKEN_DOUBLE || parser->current.type == TOKEN_LONG ||
+           parser->current.type == TOKEN_SHORT || parser->current.type == TOKEN_STRUCT ||
+           parser->current.type == TOKEN_UNION || parser->current.type == TOKEN_IDENTIFIER;
+}
+
+static ASTNode *parser_error_at_current(Parser *parser, const char *message)
+{
+    parser_add_error(parser, message, parser->current.line, parser->current.column);
+    return ast_new(AST_ERROR, message, parser->current.line, parser->current.column);
+}
+
+static ASTNode *parser_error_and_sync_global(Parser *parser, const char *message)
+{
+    ASTNode *error = parser_error_at_current(parser, message);
+
+    if (parser->current.type != TOKEN_EOF)
+        parser_next(parser);
+    while (parser->current.type != TOKEN_EOF) {
+        if (parser->current.type == TOKEN_SEMICOLON || parser->current.type == TOKEN_RBRACE) {
+            parser_next(parser);
+            break;
+        }
+        parser_next(parser);
+    }
+    return error;
+}
+
+static void parser_expect_closing_paren(Parser *parser)
+{
+    if (parser->current.type == TOKEN_RPAREN) {
+        parser_next(parser);
+        return;
+    }
+
+    parser_add_error(parser, "esperado )", parser->current.line, parser->current.column);
+    while (parser->current.type != TOKEN_RPAREN && parser->current.type != TOKEN_LBRACE &&
+           parser->current.type != TOKEN_RBRACE && parser->current.type != TOKEN_SEMICOLON &&
+           parser->current.type != TOKEN_EOF) {
+        parser_next(parser);
+    }
+    if (parser->current.type == TOKEN_RPAREN)
+        parser_next(parser);
+}
+
 static ASTNode *parser_expect(Parser *parser, int type, ASTNodeKind kind)
 {
     if (parser->current.type == type) {
@@ -292,6 +341,8 @@ static ASTNode *parser_expect(Parser *parser, int type, ASTNodeKind kind)
         parser_add_error(parser, message, parser->current.line, parser->current.column);
     }
     ASTNode *error = ast_new(AST_ERROR, parser->current.lexeme, parser->current.line, parser->current.column);
+    if (parser_is_sync_token(parser))
+        return error;
     parser_next(parser);
     return error;
 }
@@ -301,7 +352,7 @@ static ASTNode *parser_expect_semicolon(Parser *parser)
     if (parser->current.type == TOKEN_SEMICOLON)
         return parser_expect(parser, TOKEN_SEMICOLON, AST_ERROR);
     if (parser_is_sync_token(parser))
-        return parser_error(parser, "esperado ';'");
+        return parser_error_at_current(parser, "esperado ';'");
     return parser_expect(parser, TOKEN_SEMICOLON, AST_ERROR);
 }
 
@@ -535,6 +586,8 @@ static ASTNode *parse_lista_declaracoes_globais(Parser *parser)
 
 static ASTNode *parse_declaracao_global(Parser *parser)
 {
+    if (!parser_is_global_declaration_start(parser))
+        return parser_error_and_sync_global(parser, "esperado declaracao");
     if (parser->current.type == TOKEN_HASH)
         return parse_directiva(parser);
     if (parser->current.type == TOKEN_TYPEDEF)
@@ -1000,7 +1053,7 @@ static ASTNode *parse_instrucao_if(Parser *parser)
     parser_free_ast(parser_expect(parser, TOKEN_IF, AST_IDENTIFIER));
     parser_expect(parser, TOKEN_LPAREN, AST_ERROR);
     ast_add_child(node, parse_expressao(parser));
-    parser_expect(parser, TOKEN_RPAREN, AST_ERROR);
+    parser_expect_closing_paren(parser);
     char scope_name[MAX_SCOPE_NAME_LEN];
     build_child_scope_name(scope_name, sizeof(scope_name), scope_current_name(&parser->scope_table), "if");
     parser_set_pending_scope(parser, scope_name);
@@ -1029,7 +1082,7 @@ static ASTNode *parse_instrucao_while(Parser *parser)
     parser_free_ast(parser_expect(parser, TOKEN_WHILE, AST_IDENTIFIER));
     parser_expect(parser, TOKEN_LPAREN, AST_ERROR);
     ast_add_child(node, parse_expressao(parser));
-    parser_expect(parser, TOKEN_RPAREN, AST_ERROR);
+    parser_expect_closing_paren(parser);
     char scope_name[MAX_SCOPE_NAME_LEN];
     build_child_scope_name(scope_name, sizeof(scope_name), scope_current_name(&parser->scope_table), "while");
     parser_set_pending_scope(parser, scope_name);
@@ -1083,7 +1136,7 @@ static ASTNode *parse_instrucao_switch(Parser *parser)
     parser_free_ast(parser_expect(parser, TOKEN_SWITCH, AST_IDENTIFIER));
     parser_expect(parser, TOKEN_LPAREN, AST_ERROR);
     ast_add_child(node, parse_expressao(parser));
-    parser_expect(parser, TOKEN_RPAREN, AST_ERROR);
+    parser_expect_closing_paren(parser);
     parser_expect(parser, TOKEN_LBRACE, AST_ERROR);
     while (parser->current.type != TOKEN_RBRACE && parser->current.type != TOKEN_EOF) {
         ast_add_child(node, parse_case_item(parser));
