@@ -212,6 +212,13 @@ static int parser_match(Parser *parser, int type)
     return 0;
 }
 
+static int parser_is_external_type_name(const char *lexeme)
+{
+    if (!lexeme || !lexeme[0])
+        return 0;
+    return lexeme[0] >= 'A' && lexeme[0] <= 'Z';
+}
+
 static int parser_is_local_declaration_start(Parser *parser)
 {
     if (parser->current.type == TOKEN_INT || parser->current.type == TOKEN_FLOAT ||
@@ -230,8 +237,10 @@ static int parser_is_local_declaration_start(Parser *parser)
         }
         if (parser->next.type == TOKEN_STAR)
             return 1;
-        if (parser->next.type == TOKEN_IDENTIFIER)
-            return 1;
+        if (parser->next.type == TOKEN_IDENTIFIER) {
+            Symbol *sym = scope_lookup(&parser->scope_table, lex);
+            return (sym && sym->kind == SYM_TYPEDEF) || parser_is_external_type_name(lex);
+        }
         return 0;
     }
     return 0;
