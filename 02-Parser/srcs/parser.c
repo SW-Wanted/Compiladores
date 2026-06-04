@@ -230,12 +230,8 @@ static int parser_is_local_declaration_start(Parser *parser)
         }
         if (parser->next.type == TOKEN_STAR)
             return 1;
-        if (parser->next.type == TOKEN_IDENTIFIER) {
-            Symbol *sym = scope_lookup(&parser->scope_table, lex);
-            if (sym && sym->kind == SYM_TYPEDEF)
-                return 1;
-            return 0;
-        }
+        if (parser->next.type == TOKEN_IDENTIFIER)
+            return 1;
         return 0;
     }
     return 0;
