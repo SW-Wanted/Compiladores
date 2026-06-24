@@ -1,9 +1,9 @@
-# ANÁLISE LÉXICA
-*   2.1. Modelação de reconhecimento de frase (ER e Autômatos finitos).
-*   2.2. Recuperação de erros; 
-*   2.3. Sistemas de entrada; 
-*   2.4. Linguagens; 
-*   2.5. Implementação de um analisador léxico.
+# FASE 01 - ANÁLISE LÉXICA
+1.1. Modelação de reconhecimento de frase (ER e Autômatos finitos).
+1.2. Recuperação de erros; 
+1.3. Sistemas de entrada; 
+1.4. Linguagens; 
+1.5. Implementação de um analisador léxico.
 
 # Enunciado
 
@@ -15,12 +15,12 @@ O programa (**analisador Léxico**) deve conter uma **função** (**classe** ou 
 
 O analisa léxico deve ler um arquivo de entrada com os seguintes símbolos válidos da linguagem escolhida pelo grupo:
 
-- Letra: a, b...z, A, B..Z
-- Digito: 0, 1..9
-- Simbolos Especiais: (|)|{|}|[|]|etc
-- Operador Relacionais: <|>|<=|>=|etc
-- Palavras Reservadas: while | if | etc.
-- Pontuações: , | : | ; | . | etc
+- Letra: `a`, `b`..`z`, `A`, `B`..`Z`
+- Digito: `0`, `1`..`9`
+- Simbolos Especiais: `(` | `)` | `{` | `}` | `[` | `]`| etc
+- Operador Relacionais: `<` | `>` | `<=` | `>=` | etc
+- Palavras Reservadas: `while` | `if` | etc.
+- Pontuações: `,` | `:` | `;` | `.` | etc
 - etc
 
 ## Algumas funções (classe ou método) que os senhores deverão criar:

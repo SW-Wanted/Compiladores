@@ -1,19 +1,21 @@
 CC       = cc
-CFLAGS   = -Wall -Wextra -Werror -Iincludes
+CFLAGS   = -Wall -Wextra -Werror -Iinclude
 NAME     = lexer
 LIB      = liblexer.a
 OBJDIR   = objs
-LIBSRCS  = srcs/lexer.c srcs/token.c srcs/symbol_table.c
-LIBOBJS  = $(LIBSRCS:srcs/%.c=$(OBJDIR)/%.o)
+SRCDIR	 = src
+TESTDIR	 = tests
+LIBSRCS  = $(SRCDIR)/lexer.c $(SRCDIR)/token.c $(SRCDIR)/symbol_table.c
+TEST_SRC = $(TESTDIR)/teste.c
+LIBOBJS  = $(LIBSRCS:$(SRCDIR)/%.c=$(OBJDIR)/%.o)
 MAIN_OBJ = $(OBJDIR)/main.o
-TEST_SRC = tests/teste.c
 
 all: $(NAME)
 
 $(OBJDIR):
 	mkdir -p $(OBJDIR)
 
-$(OBJDIR)/%.o: srcs/%.c | $(OBJDIR)
+$(OBJDIR)/%.o: $(SRCDIR)/%.c | $(OBJDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(LIB): $(LIBOBJS)
