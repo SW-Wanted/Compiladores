@@ -1,14 +1,16 @@
 CC       = cc
-CFLAGS   = -Wall -Wextra -Werror -Iincludes -I../01-Lexer/includes
+CFLAGS   = -Wall -Wextra -Werror -Iinclude -I../01-Lexer/include
 NAME     = parser
 LIB      = libparser.a
 LIBLEXER = ../01-Lexer/liblexer.a
 OBJDIR   = objs
-SRCS     = srcs/main.c srcs/parser.c srcs/scope_table.c
-OBJS     = $(SRCS:srcs/%.c=$(OBJDIR)/%.o)
+SRCDIR   = src
+TESTDIR  = tests
+SRCS     = $(SRCDIR)/main.c $(SRCDIR)/parser.c $(SRCDIR)/scope_table.c
+TEST_SRC = $(TESTDIR)/test.c
+OBJS     = $(SRCS:$(SRCDIR)/%.c=$(OBJDIR)/%.o)
 MAIN_OBJ = $(OBJDIR)/main.o
 LIB_OBJS = $(filter-out $(MAIN_OBJ),$(OBJS))
-TEST_SRC = tests/test.c
 
 all: $(NAME)
 
@@ -18,7 +20,7 @@ $(LIBLEXER):
 $(OBJDIR):
 	mkdir -p $(OBJDIR)
 
-$(OBJDIR)/%.o: srcs/%.c | $(OBJDIR)
+$(OBJDIR)/%.o: $(SRCDIR)/%.c | $(OBJDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(LIB): $(LIB_OBJS)
