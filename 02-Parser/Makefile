@@ -6,7 +6,7 @@ LIBLEXER = ../01-Lexer/liblexer.a
 OBJDIR   = objs
 SRCDIR   = src
 TESTDIR  = tests
-SRCS     = $(SRCDIR)/main.c $(SRCDIR)/parser.c $(SRCDIR)/scope_table.c
+SRCS     = $(SRCDIR)/main.c $(SRCDIR)/parser.c $(SRCDIR)/parser_declarations.c $(SRCDIR)/parser_statements.c $(SRCDIR)/parser_expressions.c $(SRCDIR)/parser_symbols.c $(SRCDIR)/parser_utils.c $(SRCDIR)/parser_error.c $(SRCDIR)/ast.c $(SRCDIR)/scope_table.c
 TEST_SRC = $(TESTDIR)/test.c
 OBJS     = $(SRCS:$(SRCDIR)/%.c=$(OBJDIR)/%.o)
 MAIN_OBJ = $(OBJDIR)/main.o
