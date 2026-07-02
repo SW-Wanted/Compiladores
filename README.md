@@ -5,7 +5,7 @@
 ## 🗂 Fases do Compilador
 | Fase | Descrição | Status |
 | :--- | :--- | :--- |
-| 00 - [Linguagem C](./00-Language-C/) | História, tipos de dados,  etc. | ⏳ Em progresso  |
+| 00 - [Linguagem C](./00-Language-C/) | História, tipos de dados,  etc. | ✅ Concluído  |
 | 01 - [Analisador Léxico](./01-Lexer/) | Tokenização do código-fonte | ✅ Concluído |
 | 02 - [Analisador Sintático](./02-Parser/) | Verificação gramatical | ✅ Concluído  |
 | 03 - [Analisador Semântico](./03-Semantic/) | Verificação de tipos e escopo | ⏳ Em progresso  |
