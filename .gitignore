@@ -19,3 +19,4 @@ parser
 02-Parser/parser
 01-Lexer/liblexer.a
 02-Parser/libparser.a
+03-Semantic/semantic
