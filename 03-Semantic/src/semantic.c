@@ -168,11 +168,15 @@ void sem_print_diagnostics(const SemAnalyzer *a) {
   const SemDiagList *d = &a->diags;
 
   if (d->count == 0) {
-    printf(ANSI_GREEN "Análise semântica concluída com sucesso: 0 erros, 0 avisos." ANSI_RESET "\n");
+    printf(
+        ANSI_GREEN
+        "Análise semântica concluída com sucesso: 0 erros, 0 avisos." ANSI_RESET
+        "\n");
     return;
   }
 
-  printf("%-4s %-7s %-6s %-7s %s\n", "#", "TIPO", "LINHA", "COLUNA", "MENSAGEM");
+  printf("%-4s %-7s %-6s %-7s %s\n", "#", "TIPO", "LINHA", "COLUNA",
+         "MENSAGEM");
   printf("%-4s %-7s %-6s %-7s %s\n", "----", "-------", "------", "-------",
          "--------------------------------------------------");
   for (int i = 0; i < d->count; i++) {

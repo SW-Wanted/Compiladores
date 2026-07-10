@@ -28,9 +28,10 @@ static void print_help(FILE *out, const char *prog) {
   fprintf(out, "Fase 03 - Analisador Semântico\n\n");
   fprintf(out, "Realiza a análise semântica de programas escritos em C.\n\n");
   fprintf(out, "USO\n");
-  fprintf(out, "    %s [OPCOES] <arquivo.c>\n\n", prog);
+  fprintf(out, "    %s [OPÇÕES] <arquivo.c>\n\n", prog);
   fprintf(out, "OPÇÕES\n");
-  fprintf(out, "    -d, --diagnostics   Mostrar diagnósticos semânticos (predefinido)\n");
+  fprintf(out, "    -d, --diagnostics   Mostrar diagnósticos semânticos "
+               "(predefinido)\n");
   fprintf(out, "    -s, --symbols       Mostrar tabela de símbolos\n");
   fprintf(out, "    -a, --ast           Mostrar árvore sintática\n");
   fprintf(out, "    -A, --all           Mostrar todas as informações\n");
@@ -137,7 +138,8 @@ static void print_syntax_errors(const Parser *parser) {
     printf("%-4d %-6d %-7d \x1b[31m%s\x1b[0m\n", i + 1, parser->errors[i].line,
            parser->errors[i].column, parser->errors[i].message);
   printf("\nTotal de erros sintáticos: %d\n", parser->error_count);
-  printf("Análise semântica abortada (corrija primeiro os erros de sintaxe).\n");
+  printf(
+      "Análise semântica abortada (corrija primeiro os erros de sintaxe).\n");
 }
 
 static double elapsed_ms(struct timespec start, struct timespec end) {
