@@ -71,8 +71,8 @@ const char *ast_kind_name(ASTNodeKind kind)
         case AST_SWITCH_STMT: return "instrucao_switch";
         case AST_CASE_STMT: return "caso";
         case AST_DEFAULT_STMT: return "default";
-        case AST_BREAK_STMT: return "break";
-        case AST_CONTINUE_STMT: return "continue";
+        case AST_BREAK_STMT: return "instrucao_break";
+        case AST_CONTINUE_STMT: return "instrucao_continue";
         case AST_RETURN_STMT: return "instrucao_return";
         case AST_BINARY_EXPR: return "expressao_binaria";
         case AST_UNARY_EXPR: return "expressao_unaria";
