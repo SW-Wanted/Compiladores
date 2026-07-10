@@ -9,18 +9,41 @@ typedef struct {
     int show_ast;
     int show_symbols;
     int show_diagnostics;
+    int show_help;
 } OutputFlags;
 
-static void print_usage(const char *program_name)
+/**
+ * @brief Devolve o nome do programa sem o caminho.
+ */
+static const char *program_name(const char *path)
 {
-    fprintf(stderr, "Uso: %s [opcoes] <arquivo.c>\n", program_name);
-    fprintf(stderr, "Opcoes:\n");
-    fprintf(stderr, "  -a, --ast        mostrar a arvore sintactica (AST)\n");
-    fprintf(stderr, "  -s, --symbols    mostrar a tabela de simbolos semantica\n");
-    fprintf(stderr, "  -d, --diagnostics mostrar os diagnosticos semanticos (predefinido)\n");
-    fprintf(stderr, "  -A, --all        mostrar tudo\n");
+    const char *slash = strrchr(path, '/');
+    return slash ? slash + 1 : path;
 }
 
+/**
+ * @brief Imprime a ajuda no formato de ferramenta de linha de comandos.
+ */
+static void print_help(FILE *out, const char *prog)
+{
+    fprintf(out, "Fase 03 - Analisador Semantico\n\n");
+    fprintf(out, "USO\n");
+    fprintf(out, "    %s [OPCOES] <arquivo.c>\n\n", prog);
+    fprintf(out, "OPCOES\n");
+    fprintf(out, "    -d, --diagnostics   Mostrar diagnosticos semanticos (predefinido)\n");
+    fprintf(out, "    -s, --symbols       Mostrar tabela de simbolos\n");
+    fprintf(out, "    -a, --ast           Mostrar arvore sintactica\n");
+    fprintf(out, "    -A, --all           Mostrar todas as informacoes\n");
+    fprintf(out, "    -h, --help          Mostrar esta ajuda\n\n");
+    fprintf(out, "EXEMPLOS\n");
+    fprintf(out, "    %s teste.c\n", prog);
+    fprintf(out, "    %s --all teste.c\n", prog);
+    fprintf(out, "    %s --symbols teste.c\n", prog);
+}
+
+/**
+ * @brief Le o conteudo de um ficheiro para uma string alocada dinamicamente.
+ */
 static char *read_file(const char *path)
 {
     FILE *f = fopen(path, "r");
@@ -46,9 +69,12 @@ static char *read_file(const char *path)
     return buffer;
 }
 
+/**
+ * @brief Interpreta os argumentos da linha de comandos.
+ */
 static OutputFlags parse_output_flags(int argc, char *argv[], const char **filename)
 {
-    OutputFlags flags = {0, 0, 0};
+    OutputFlags flags = {0, 0, 0, 0};
 
     for (int i = 1; i < argc; i++) {
         if (argv[i][0] != '-') {
@@ -63,6 +89,8 @@ static OutputFlags parse_output_flags(int argc, char *argv[], const char **filen
             flags.show_diagnostics = 1;
         } else if (strcmp(argv[i], "--all") == 0) {
             flags.show_ast = flags.show_symbols = flags.show_diagnostics = 1;
+        } else if (strcmp(argv[i], "--help") == 0) {
+            flags.show_help = 1;
         } else {
             for (int j = 1; argv[i][j] != '\0'; j++) {
                 switch (argv[i][j]) {
@@ -70,6 +98,7 @@ static OutputFlags parse_output_flags(int argc, char *argv[], const char **filen
                     case 's': flags.show_symbols = 1; break;
                     case 'd': flags.show_diagnostics = 1; break;
                     case 'A': flags.show_ast = flags.show_symbols = flags.show_diagnostics = 1; break;
+                    case 'h': flags.show_help = 1; break;
                     default: break;
                 }
             }
@@ -82,31 +111,44 @@ static OutputFlags parse_output_flags(int argc, char *argv[], const char **filen
     return flags;
 }
 
+/**
+ * @brief Imprime a tabela de erros sintacticos que impediram a analise semantica.
+ */
 static void print_syntax_errors(const Parser *parser)
 {
     printf("=== ERROS SINTACTICOS ===\n");
-    printf("%-5s %-40s %-7s %-7s\n", "#", "MENSAGEM", "LINHA", "COLUNA");
-    printf("%-5s %-40s %-7s %-7s\n", "-----",
-           "----------------------------------------", "-------", "-------");
+    printf("%-4s %-6s %-7s %s\n", "#", "LINHA", "COLUNA", "MENSAGEM");
+    printf("%-4s %-6s %-7s %s\n", "----", "------", "-------",
+           "--------------------------------------------------");
     for (int i = 0; i < parser->error_count; i++)
-        printf("%-5d \x1b[31m%-40s\x1b[0m %-7d %-7d\n",
-               i + 1, parser->errors[i].message,
-               parser->errors[i].line, parser->errors[i].column);
+        printf("%-4d %-6d %-7d \x1b[31m%s\x1b[0m\n",
+               i + 1, parser->errors[i].line, parser->errors[i].column,
+               parser->errors[i].message);
     printf("\nTotal de erros sintacticos: %d\n", parser->error_count);
     printf("Analise semantica abortada (corrija primeiro os erros de sintaxe).\n");
 }
 
+/**
+ * @brief Ponto de entrada: liga o Parser ao Analisador Semantico.
+ */
 int main(int argc, char *argv[])
 {
+    const char *prog = program_name(argv[0]);
+
     if (argc < 2) {
-        print_usage(argv[0]);
+        print_help(stderr, prog);
         return 1;
     }
 
     const char *filename = NULL;
     OutputFlags flags = parse_output_flags(argc, argv, &filename);
+
+    if (flags.show_help) {
+        print_help(stdout, prog);
+        return 0;
+    }
     if (!filename) {
-        print_usage(argv[0]);
+        print_help(stderr, prog);
         return 1;
     }
 
@@ -130,8 +172,6 @@ int main(int argc, char *argv[])
         print_syntax_errors(&parser);
         exit_code = 1;
     } else {
-        /* A estrutura do analisador e grande (tabelas de simbolos e tipos);
-           aloca-se no heap para nao esgotar a pilha. */
         SemAnalyzer *analyzer = malloc(sizeof(SemAnalyzer));
         if (!analyzer) {
             fprintf(stderr, "Erro: memoria insuficiente\n");

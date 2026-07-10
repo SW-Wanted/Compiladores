@@ -3,10 +3,9 @@
 
 #include "sem_check.h"
 
-/* ------------------------------------------------------------------ */
-/*  Utilitarios de navegacao na AST                                    */
-/* ------------------------------------------------------------------ */
-
+/**
+ * @brief Devolve o nome (lexema) do identificador de um declarador.
+ */
 const char *sem_declarator_name(ASTNode *node)
 {
     if (!node)
@@ -21,6 +20,9 @@ const char *sem_declarator_name(ASTNode *node)
     return NULL;
 }
 
+/**
+ * @brief Resolve a posicao de um no, procurando a primeira valida na subarvore.
+ */
 void sem_node_position(ASTNode *node, int *line, int *column)
 {
     if (!node) {
@@ -33,7 +35,6 @@ void sem_node_position(ASTNode *node, int *line, int *column)
         *column = node->column;
         return;
     }
-    /* No sem posicao propria: procura a primeira posicao valida na subarvore. */
     for (int i = 0; i < node->child_count; i++) {
         sem_node_position(node->children[i], line, column);
         if (*line >= 0)
@@ -43,6 +44,9 @@ void sem_node_position(ASTNode *node, int *line, int *column)
     *column = -1;
 }
 
+/**
+ * @brief Linha resolvida de um no (subarvore incluida).
+ */
 int sem_line(ASTNode *node)
 {
     int line = -1, column = -1;
@@ -50,6 +54,9 @@ int sem_line(ASTNode *node)
     return line;
 }
 
+/**
+ * @brief Coluna resolvida de um no (subarvore incluida).
+ */
 int sem_col(ASTNode *node)
 {
     int line = -1, column = -1;
@@ -57,10 +64,9 @@ int sem_col(ASTNode *node)
     return column;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Qualificadores e tipos base                                        */
-/* ------------------------------------------------------------------ */
-
+/**
+ * @brief Verdadeiro se o lexema e um qualificador/classe de armazenamento.
+ */
 static int is_qualifier(const char *text)
 {
     if (!text)
@@ -71,6 +77,11 @@ static int is_qualifier(const char *text)
            strcmp(text, "register") == 0 || strcmp(text, "auto") == 0;
 }
 
+/**
+ * @brief Converte o lexema de um especificador de tipo no token base.
+ *
+ * Devolve TOKEN_IDENTIFIER quando se trata de um typedef-name ou tipo externo.
+ */
 static int base_from_text(const char *text)
 {
     if (!text) return TOKEN_INT;
@@ -83,13 +94,12 @@ static int base_from_text(const char *text)
     if (strcmp(text, "short") == 0)  return TOKEN_SHORT;
     if (strcmp(text, "struct") == 0) return TOKEN_STRUCT;
     if (strcmp(text, "union") == 0)  return TOKEN_UNION;
-    return TOKEN_IDENTIFIER; /* typedef-name ou tipo externo */
+    return TOKEN_IDENTIFIER;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Etiquetas struct / union                                           */
-/* ------------------------------------------------------------------ */
-
+/**
+ * @brief Procura uma etiqueta struct/union pelo nome (NULL se nao existir).
+ */
 SemTag *sem_tag_find(SemAnalyzer *analyzer, const char *name)
 {
     if (!name || !name[0])
@@ -101,6 +111,9 @@ SemTag *sem_tag_find(SemAnalyzer *analyzer, const char *name)
     return NULL;
 }
 
+/**
+ * @brief Cria uma nova etiqueta struct/union vazia.
+ */
 static SemTag *tag_create(SemAnalyzer *analyzer, const char *name, int is_union)
 {
     if (analyzer->tag_count >= SEM_MAX_TAGS)
@@ -114,7 +127,9 @@ static SemTag *tag_create(SemAnalyzer *analyzer, const char *name, int is_union)
     return tag;
 }
 
-/* Regista os campos declarados no corpo (AST_BLOCK) de uma struct/union. */
+/**
+ * @brief Regista os campos declarados no corpo (AST_BLOCK) de uma struct/union.
+ */
 static void register_fields(SemAnalyzer *analyzer, SemTag *tag, ASTNode *body)
 {
     for (int i = 0; i < body->child_count; i++) {
@@ -148,6 +163,12 @@ static void register_fields(SemAnalyzer *analyzer, SemTag *tag, ASTNode *body)
     }
 }
 
+/**
+ * @brief Regista (ou obtem) a etiqueta de um especificador struct/union.
+ *
+ * Se houver corpo, marca a etiqueta como definida antes de registar os campos,
+ * o que permite structs auto-referentes (ex.: `struct No { struct No *next; }`).
+ */
 SemTag *sem_tag_register(SemAnalyzer *analyzer, ASTNode *type_spec)
 {
     int is_union = (type_spec->text && strcmp(type_spec->text, "union") == 0);
@@ -160,7 +181,6 @@ SemTag *sem_tag_register(SemAnalyzer *analyzer, ASTNode *type_spec)
 
     ASTNode *info = type_spec->children[0];
     if (info->kind == AST_IDENTIFIER) {
-        /* nome (+ corpo opcional): info->children = [nome, corpo?] */
         if (info->child_count > 0 && info->children[0]->text)
             strncpy(tag_name, info->children[0]->text, SEM_MAX_NAME - 1);
         for (int i = 1; i < info->child_count; i++) {
@@ -170,7 +190,6 @@ SemTag *sem_tag_register(SemAnalyzer *analyzer, ASTNode *type_spec)
             }
         }
     } else if (info->kind == AST_BLOCK) {
-        /* struct/union anonima */
         snprintf(tag_name, sizeof(tag_name), "@anon%d", ++analyzer->anon_counter);
         body = info;
     }
@@ -185,22 +204,23 @@ SemTag *sem_tag_register(SemAnalyzer *analyzer, ASTNode *type_spec)
         return NULL;
 
     if (body && !tag->defined) {
-        tag->defined = 1;      /* marcar antes de registar campos (structs auto-referentes) */
+        tag->defined = 1;
         register_fields(analyzer, tag, body);
     }
     return tag;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Construcao de tipos a partir da AST                                */
-/* ------------------------------------------------------------------ */
-
+/**
+ * @brief Constroi o tipo base a partir de um no AST_TYPE_SPECIFIER.
+ *
+ * Descarta qualificadores, regista etiquetas struct/union e trata os
+ * typedef-names como tipos identificados pelo nome.
+ */
 SemType sem_type_from_spec(SemAnalyzer *analyzer, ASTNode *type_spec)
 {
     if (!type_spec)
         return sem_type_int();
 
-    /* Qualificador de armazenamento/const: descer ao tipo interno. */
     if (is_qualifier(type_spec->text)) {
         if (type_spec->child_count > 0)
             return sem_type_from_spec(analyzer, type_spec->children[0]);
@@ -211,8 +231,7 @@ SemType sem_type_from_spec(SemAnalyzer *analyzer, ASTNode *type_spec)
 
     if (base == TOKEN_STRUCT || base == TOKEN_UNION) {
         SemTag *tag = sem_tag_register(analyzer, type_spec);
-        SemType t = sem_type_make(base, tag ? tag->name : NULL);
-        return t;
+        return sem_type_make(base, tag ? tag->name : NULL);
     }
 
     if (base == TOKEN_IDENTIFIER)
@@ -221,6 +240,9 @@ SemType sem_type_from_spec(SemAnalyzer *analyzer, ASTNode *type_spec)
     return sem_type_make(base, NULL);
 }
 
+/**
+ * @brief Aplica os ponteiros e arrays de um declarador ao tipo base.
+ */
 SemType sem_type_from_declarator(SemType base, ASTNode *declarator)
 {
     SemType t = base;
@@ -239,6 +261,9 @@ SemType sem_type_from_declarator(SemType base, ASTNode *declarator)
     return t;
 }
 
+/**
+ * @brief Resolve typedefs, devolvendo o tipo subjacente (acumulando indireccao).
+ */
 SemType sem_resolve(SemAnalyzer *analyzer, SemType type)
 {
     int guard = 0;

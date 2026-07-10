@@ -5,15 +5,17 @@
 
 #include "sem_check.h"
 
-/* ------------------------------------------------------------------ */
-/*  Classificacao de operadores (pelo texto do no)                     */
-/* ------------------------------------------------------------------ */
-
+/**
+ * @brief Verdadeiro se o operador @p op e igual ao lexema @p value.
+ */
 static int op_is(const char *op, const char *value)
 {
     return op && strcmp(op, value) == 0;
 }
 
+/**
+ * @brief Verdadeiro se o operador e de atribuicao (simples ou composta).
+ */
 static int is_assign_op(const char *op)
 {
     return op_is(op, "=")  || op_is(op, "+=") || op_is(op, "-=") ||
@@ -22,43 +24,56 @@ static int is_assign_op(const char *op)
            op_is(op, "<<=") || op_is(op, ">>=");
 }
 
+/**
+ * @brief Verdadeiro se o operador e relacional ou de igualdade.
+ */
 static int is_relational_op(const char *op)
 {
     return op_is(op, "<") || op_is(op, ">") || op_is(op, "<=") ||
            op_is(op, ">=") || op_is(op, "==") || op_is(op, "!=");
 }
 
+/**
+ * @brief Verdadeiro se o operador e logico (&& ou ||).
+ */
 static int is_logical_op(const char *op)
 {
     return op_is(op, "&&") || op_is(op, "||");
 }
 
+/**
+ * @brief Verdadeiro se o operador e bit-a-bit (&, |, ^, <<, >>).
+ */
 static int is_bitwise_op(const char *op)
 {
     return op_is(op, "&") || op_is(op, "|") || op_is(op, "^") ||
            op_is(op, "<<") || op_is(op, ">>");
 }
 
-/* ------------------------------------------------------------------ */
-/*  Literais e lvalues                                                 */
-/* ------------------------------------------------------------------ */
-
+/**
+ * @brief Infere o tipo de um literal a partir do seu lexema.
+ *
+ * "..." -> char*, 'a' -> char, 3.14 -> double, 42 -> int.
+ */
 static SemType infer_literal(const char *text)
 {
     if (!text || !text[0])
         return sem_type_int();
-    if (text[0] == '"') {           /* "..." -> char*  */
+    if (text[0] == '"') {
         SemType t = sem_type_make(TOKEN_CHAR, NULL);
         t.pointer_level = 1;
         return t;
     }
-    if (text[0] == '\'')            /* 'a' -> char     */
+    if (text[0] == '\'')
         return sem_type_make(TOKEN_CHAR, NULL);
-    if (strchr(text, '.'))          /* 3.14 -> double  */
+    if (strchr(text, '.'))
         return sem_type_make(TOKEN_DOUBLE, NULL);
-    return sem_type_int();          /* 42 -> int       */
+    return sem_type_int();
 }
 
+/**
+ * @brief Verdadeiro se o no e o literal inteiro zero (constante de ponteiro nulo).
+ */
 static int is_zero_literal(ASTNode *node)
 {
     if (!node || node->kind != AST_LITERAL || !node->text)
@@ -72,49 +87,56 @@ static int is_zero_literal(ASTNode *node)
     return t[0] != '\0';
 }
 
+/**
+ * @brief Verdadeiro se a expressao e um lvalue (pode receber atribuicao).
+ */
 int sem_is_lvalue(ASTNode *node)
 {
     if (!node)
         return 0;
     switch (node->kind) {
         case AST_IDENTIFIER:
-            return 1;
         case AST_SUBSCRIPT_EXPR:
         case AST_MEMBER_EXPR:
             return 1;
         case AST_UNARY_EXPR:
-            return node->text && strcmp(node->text, "*") == 0; /* *ptr e lvalue */
+            return node->text && strcmp(node->text, "*") == 0;
         default:
             return 0;
     }
 }
 
-/* ------------------------------------------------------------------ */
-/*  Compatibilidade de tipos                                           */
-/* ------------------------------------------------------------------ */
-
 typedef enum {
-    COMPAT_OK,        /* compativel */
-    COMPAT_NARROW,    /* aritmetico com possivel perda de precisao (aviso) */
-    COMPAT_PTR,       /* ponteiros incompativeis (aviso) */
-    COMPAT_BAD        /* incompativel (erro) */
+    COMPAT_OK,
+    COMPAT_NARROW,
+    COMPAT_PTR,
+    COMPAT_BAD
 } CompatResult;
 
-/* Tipo opaco: identificador nao resolvido (tipo externo desconhecido). */
+/**
+ * @brief Verdadeiro se o tipo e um identificador nao resolvido (tipo externo opaco).
+ */
 static int is_opaque(const SemType *t)
 {
     return t->valid && t->base == TOKEN_IDENTIFIER;
 }
 
+/**
+ * @brief Classifica a compatibilidade de atribuir @p src a @p dst.
+ *
+ * Aritmetico<->aritmetico e compativel (COMPAT_NARROW se houver perda);
+ * ponteiros compativeis com void* e com o literal 0; struct/void incompativeis
+ * com escalares. Tipos invalidos ou opacos sao tolerados para evitar cascatas.
+ */
 static CompatResult type_compatible(SemAnalyzer *a, SemType dst, SemType src, ASTNode *src_node)
 {
     dst = sem_resolve(a, dst);
     src = sem_resolve(a, src);
 
     if (!dst.valid || !src.valid)
-        return COMPAT_OK;                 /* suprime cascata de erros */
+        return COMPAT_OK;
     if (is_opaque(&dst) || is_opaque(&src))
-        return COMPAT_OK;                 /* tipo externo desconhecido: leniente */
+        return COMPAT_OK;
 
     int dst_ptr = sem_type_is_pointer(&dst);
     int src_ptr = sem_type_is_pointer(&src);
@@ -126,20 +148,18 @@ static CompatResult type_compatible(SemAnalyzer *a, SemType dst, SemType src, AS
     }
 
     if (dst_ptr && src_ptr) {
-        int dst_void = dst.base == TOKEN_VOID;
-        int src_void = src.base == TOKEN_VOID;
-        if (dst_void || src_void)
-            return COMPAT_OK;             /* void* compativel com qualquer ponteiro */
+        if (dst.base == TOKEN_VOID || src.base == TOKEN_VOID)
+            return COMPAT_OK;
         if (dst.base == src.base && dst.pointer_level == src.pointer_level)
             return COMPAT_OK;
         return COMPAT_PTR;
     }
 
     if (dst_ptr && sem_type_is_integer(&src))
-        return is_zero_literal(src_node) ? COMPAT_OK : COMPAT_BAD; /* 0 == ponteiro nulo */
+        return is_zero_literal(src_node) ? COMPAT_OK : COMPAT_BAD;
 
     if (dst_ptr || src_ptr)
-        return COMPAT_BAD;               /* ponteiro <-> nao-inteiro/nao-ponteiro */
+        return COMPAT_BAD;
 
     if (sem_type_is_aggregate(&dst) && sem_type_is_aggregate(&src)) {
         if (dst.base == src.base && strcmp(dst.name, src.name) == 0)
@@ -156,10 +176,9 @@ static CompatResult type_compatible(SemAnalyzer *a, SemType dst, SemType src, AS
     return COMPAT_OK;
 }
 
-/*
- * Verifica a compatibilidade de uma atribuicao/inicializacao/passagem de
- * argumento, emitindo o diagnostico apropriado. @p context descreve o local
- * (ex.: "atribuicao", "inicializacao", "argumento 2 de 'f'").
+/**
+ * @brief Verifica a compatibilidade de uma atribuicao/inicializacao/argumento,
+ *        emitindo o diagnostico adequado (@p context descreve o local).
  */
 void sem_check_assign_compat(SemAnalyzer *a, SemType dst, SemType src, ASTNode *src_node,
                              int line, int column, const char *context)
@@ -193,29 +212,27 @@ void sem_check_assign_compat(SemAnalyzer *a, SemType dst, SemType src, ASTNode *
     }
 }
 
-/* ------------------------------------------------------------------ */
-/*  Resultado de operacoes aritmeticas                                 */
-/* ------------------------------------------------------------------ */
-
+/**
+ * @brief Resultado das conversoes aritmeticas usuais (o tipo de maior rank, >= int).
+ */
 static SemType arith_result(SemType left, SemType right)
 {
     SemType r = sem_type_rank(&left) >= sem_type_rank(&right) ? left : right;
     r.pointer_level = 0;
     r.array_level = 0;
-    if (sem_type_rank(&r) < 3)     /* promocao de char/short para int */
+    if (sem_type_rank(&r) < 3)
         return sem_type_int();
     return r;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Sub-verificadores por especie de expressao                         */
-/* ------------------------------------------------------------------ */
-
+/**
+ * @brief Verifica o uso de um identificador, reportando se nao estiver declarado.
+ */
 static SemType check_identifier(SemAnalyzer *a, ASTNode *node)
 {
     SemSymbol *sym = sem_lookup(&a->symtab, node->text);
     if (!sym) {
-        sem_error(&a->diags, sem_line(node), sem_col(node),
+        sem_error(&a->diags, node->line, node->column,
                   "variavel '%s' nao declarada", node->text);
         return sem_type_invalid();
     }
@@ -223,6 +240,9 @@ static SemType check_identifier(SemAnalyzer *a, ASTNode *node)
     return sym->type;
 }
 
+/**
+ * @brief Verifica uma atribuicao: lvalue a esquerda e compatibilidade de tipos.
+ */
 static SemType check_assignment(SemAnalyzer *a, ASTNode *node, const char *op)
 {
     ASTNode *left = node->children[0];
@@ -240,7 +260,6 @@ static SemType check_assignment(SemAnalyzer *a, ASTNode *node, const char *op)
     if (strcmp(op, "=") == 0) {
         sem_check_assign_compat(a, lt, rt, right, sem_line(node), sem_col(node), "atribuicao");
     } else {
-        /* atribuicoes compostas (+=, &=, ...) exigem operandos escalares/inteiros */
         int bitwise = op_is(op, "&=") || op_is(op, "|=") || op_is(op, "^=") ||
                       op_is(op, "<<=") || op_is(op, ">>=") || op_is(op, "%=");
         if (bitwise) {
@@ -255,6 +274,9 @@ static SemType check_assignment(SemAnalyzer *a, ASTNode *node, const char *op)
     return lt;
 }
 
+/**
+ * @brief Verifica uma expressao binaria e devolve o tipo do resultado.
+ */
 static SemType check_binary(SemAnalyzer *a, ASTNode *node)
 {
     const char *op = node->text;
@@ -300,15 +322,14 @@ static SemType check_binary(SemAnalyzer *a, ASTNode *node)
         return sem_type_int();
     }
 
-    /* aritmeticos: +, -, *, / */
     int ptr_l = sem_type_is_pointer(&lt);
     int ptr_r = sem_type_is_pointer(&rt);
     if (ptr_l || ptr_r) {
         if ((op_is(op, "+") || op_is(op, "-")) &&
             ((ptr_l && sem_type_is_integer(&rt)) || (sem_type_is_integer(&lt) && ptr_r)))
-            return ptr_l ? lt : rt;             /* aritmetica de ponteiros */
+            return ptr_l ? lt : rt;
         if (op_is(op, "-") && ptr_l && ptr_r)
-            return sem_type_int();              /* diferenca de ponteiros */
+            return sem_type_int();
         sem_error(&a->diags, sem_line(node), sem_col(node),
                   "operador '%s' invalido para operandos do tipo ponteiro", op);
         return sem_type_invalid();
@@ -322,6 +343,9 @@ static SemType check_binary(SemAnalyzer *a, ASTNode *node)
     return arith_result(lt, rt);
 }
 
+/**
+ * @brief Verifica uma expressao unaria (prefixa ou pos-fixa) e devolve o seu tipo.
+ */
 static SemType check_unary(SemAnalyzer *a, ASTNode *node)
 {
     const char *op = node->text;
@@ -385,7 +409,6 @@ static SemType check_unary(SemAnalyzer *a, ASTNode *node)
         return t;
     }
 
-    /* '-' e '+' unarios */
     if (t.valid && !sem_type_is_arithmetic(&t)) {
         sem_error(&a->diags, sem_line(node), sem_col(node),
                   "operador unario '%s' requer operando numerico", op);
@@ -394,6 +417,11 @@ static SemType check_unary(SemAnalyzer *a, ASTNode *node)
     return t;
 }
 
+/**
+ * @brief Verifica uma chamada de funcao: existencia, aridade e tipos dos argumentos.
+ *
+ * Funcoes desconhecidas (de cabecalhos externos) geram apenas um aviso.
+ */
 static SemType check_call(SemAnalyzer *a, ASTNode *node)
 {
     ASTNode *callee = node->child_count > 0 ? node->children[0] : NULL;
@@ -427,7 +455,6 @@ static SemType check_call(SemAnalyzer *a, ASTNode *node)
         return sem_type_invalid();
     }
 
-    /* Tipos dos argumentos (sempre verificados para apanhar erros internos). */
     SemType arg_types[SEM_MAX_PARAMS];
     for (int i = 0; i < argc; i++) {
         SemType t = sem_check_expr(a, args->children[i]);
@@ -453,14 +480,17 @@ static SemType check_call(SemAnalyzer *a, ASTNode *node)
     return fn->type;
 }
 
+/**
+ * @brief Verifica uma indexacao `a[i]` e devolve o tipo do elemento.
+ *
+ * Tolera indexar escalares porque o parser descarta os colchetes de arrays
+ * vazios em parametros (ex.: `int v[]`); so rejeita struct/union e void.
+ */
 static SemType check_subscript(SemAnalyzer *a, ASTNode *node)
 {
     SemType arr = sem_check_expr(a, node->children[0]);
     SemType idx = sem_check_expr(a, node->children[1]);
 
-    /* Um array/ponteiro pode ser indexado. Tipos agregados ou void nao.
-       Um escalar aritmetico e tolerado porque o parser descarta os
-       colchetes de arrays vazios em parametros (ex.: 'int v[]'). */
     if (arr.valid && !sem_type_is_pointer(&arr) &&
         (sem_type_is_aggregate(&arr) || sem_type_is_void(&arr))) {
         char s[SEM_MAX_NAME + 32];
@@ -478,6 +508,9 @@ static SemType check_subscript(SemAnalyzer *a, ASTNode *node)
     return arr;
 }
 
+/**
+ * @brief Verifica um acesso a membro (`.` ou `->`) e devolve o tipo do campo.
+ */
 static SemType check_member(SemAnalyzer *a, ASTNode *node)
 {
     int arrow = node->text && strcmp(node->text, "->") == 0;
@@ -507,7 +540,7 @@ static SemType check_member(SemAnalyzer *a, ASTNode *node)
 
     SemTag *tag = sem_tag_find(a, obj.name);
     if (!tag || !tag->defined)
-        return sem_type_invalid();     /* struct externa/incompleta: leniente */
+        return sem_type_invalid();
 
     for (int i = 0; i < tag->field_count; i++) {
         if (member && strcmp(tag->field_names[i], member) == 0)
@@ -520,6 +553,9 @@ static SemType check_member(SemAnalyzer *a, ASTNode *node)
     return sem_type_invalid();
 }
 
+/**
+ * @brief Verifica o operador ternario `cond ? a : b` e devolve o tipo comum.
+ */
 static SemType check_conditional(SemAnalyzer *a, ASTNode *node)
 {
     SemType cond = sem_check_expr(a, node->children[0]);
@@ -535,10 +571,9 @@ static SemType check_conditional(SemAnalyzer *a, ASTNode *node)
     return a_t.valid ? a_t : b_t;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Despacho principal                                                 */
-/* ------------------------------------------------------------------ */
-
+/**
+ * @brief Verifica uma expressao qualquer, devolvendo o seu tipo e emitindo diagnosticos.
+ */
 SemType sem_check_expr(SemAnalyzer *a, ASTNode *node)
 {
     if (!node)
@@ -555,7 +590,6 @@ SemType sem_check_expr(SemAnalyzer *a, ASTNode *node)
         case AST_CONDITIONAL_EXPR:  return check_conditional(a, node);
         case AST_ERROR:             return sem_type_invalid();
         default:
-            /* No inesperado: percorrer filhos para nao perder verificacoes. */
             for (int i = 0; i < node->child_count; i++)
                 sem_check_expr(a, node->children[i]);
             return sem_type_invalid();

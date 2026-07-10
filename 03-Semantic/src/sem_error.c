@@ -4,6 +4,9 @@
 
 #include "sem_error.h"
 
+/**
+ * @brief Inicializa a lista de diagnosticos vazia.
+ */
 void sem_diag_init(SemDiagList *list)
 {
     list->count = 0;
@@ -11,6 +14,9 @@ void sem_diag_init(SemDiagList *list)
     list->warning_count = 0;
 }
 
+/**
+ * @brief Acrescenta um diagnostico formatado com a severidade indicada.
+ */
 static void diag_add(SemDiagList *list, SemSeverity severity, int line, int column,
                      const char *fmt, va_list args)
 {
@@ -29,6 +35,9 @@ static void diag_add(SemDiagList *list, SemSeverity severity, int line, int colu
         list->warning_count++;
 }
 
+/**
+ * @brief Regista um erro semantico formatado.
+ */
 void sem_error(SemDiagList *list, int line, int column, const char *fmt, ...)
 {
     va_list args;
@@ -37,6 +46,9 @@ void sem_error(SemDiagList *list, int line, int column, const char *fmt, ...)
     va_end(args);
 }
 
+/**
+ * @brief Regista um aviso semantico formatado.
+ */
 void sem_warning(SemDiagList *list, int line, int column, const char *fmt, ...)
 {
     va_list args;

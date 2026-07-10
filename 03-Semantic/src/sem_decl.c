@@ -2,10 +2,9 @@
 
 #include "sem_check.h"
 
-/* ------------------------------------------------------------------ */
-/*  Assinaturas de funcoes                                             */
-/* ------------------------------------------------------------------ */
-
+/**
+ * @brief Preenche os tipos dos parametros de uma funcao a partir da AST.
+ */
 static void fill_parameters(SemAnalyzer *a, ASTNode *param_list, SemSymbol *sym)
 {
     sym->param_count = 0;
@@ -22,6 +21,12 @@ static void fill_parameters(SemAnalyzer *a, ASTNode *param_list, SemSymbol *sym)
     }
 }
 
+/**
+ * @brief Regista a assinatura de uma funcao (deteccao de redefinicao).
+ *
+ * Um prototipo seguido de definicao actualiza o mesmo simbolo; duas definicoes
+ * geram erro. Builtins podem ser sobrepostos por definicoes do utilizador.
+ */
 static void register_function(SemAnalyzer *a, ASTNode *func)
 {
     if (func->child_count < 3)
@@ -63,7 +68,6 @@ static void register_function(SemAnalyzer *a, ASTNode *func)
                       name, existing->line);
             return;
         }
-        /* Prototipo seguido de definicao (ou builtin sobreposto): actualiza. */
         int was_defined = existing->is_defined;
         int builtin = existing->is_variadic;
         *existing = symbol;
@@ -79,6 +83,9 @@ static void register_function(SemAnalyzer *a, ASTNode *func)
     sem_declare(&a->symtab, &symbol, &duplicate);
 }
 
+/**
+ * @brief Regista um typedef, associando o nome ao tipo subjacente.
+ */
 static void register_typedef(SemAnalyzer *a, ASTNode *node)
 {
     if (node->child_count < 2)
@@ -103,6 +110,9 @@ static void register_typedef(SemAnalyzer *a, ASTNode *node)
                   "redeclaracao do tipo '%s'", name);
 }
 
+/**
+ * @brief Regista uma macro `#define` como constante (evita 'nao declarada').
+ */
 static void register_define(SemAnalyzer *a, ASTNode *node)
 {
     if (node->child_count == 0 || !node->children[0]->text)
@@ -116,7 +126,6 @@ static void register_define(SemAnalyzer *a, ASTNode *node)
         else if (strchr(v, '.')) type = sem_type_make(TOKEN_DOUBLE, NULL);
     }
 
-    /* Macros podem ser redefinidas silenciosamente; nao emitir erro. */
     if (sem_lookup_current(&a->symtab, name))
         return;
 
@@ -132,10 +141,9 @@ static void register_define(SemAnalyzer *a, ASTNode *node)
     sem_declare(&a->symtab, &symbol, &duplicate);
 }
 
-/* ------------------------------------------------------------------ */
-/*  Analise do corpo de uma funcao                                     */
-/* ------------------------------------------------------------------ */
-
+/**
+ * @brief Analisa o corpo de uma funcao (parametros + bloco no mesmo escopo).
+ */
 static void analyze_function(SemAnalyzer *a, ASTNode *func)
 {
     if (func->child_count < 3)
@@ -146,7 +154,7 @@ static void analyze_function(SemAnalyzer *a, ASTNode *func)
     ASTNode *body = (func->child_count > 3 && func->children[3]->kind == AST_BLOCK)
                         ? func->children[3] : NULL;
     if (!body)
-        return; /* apenas prototipo */
+        return;
 
     SemType base = sem_type_from_spec(a, type_spec);
     a->current_return = sem_type_from_declarator(base, declarator);
@@ -156,7 +164,6 @@ static void analyze_function(SemAnalyzer *a, ASTNode *func)
 
     sem_scope_enter(&a->symtab);
 
-    /* Parametros partilham o escopo do corpo da funcao. */
     for (int i = 0; i < param_list->child_count; i++) {
         ASTNode *p = param_list->children[i];
         if (p->kind != AST_PARAM || p->child_count < 2)
@@ -182,16 +189,15 @@ static void analyze_function(SemAnalyzer *a, ASTNode *func)
                       "parametro '%s' declarado mais de uma vez", pname);
     }
 
-    sem_check_block(a, body, 0); /* nao abrir novo escopo: partilha com parametros */
+    sem_check_block(a, body, 0);
 
     sem_scope_exit(&a->symtab);
     a->in_function = 0;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Passagens sobre as declaracoes globais                             */
-/* ------------------------------------------------------------------ */
-
+/**
+ * @brief Devolve a lista de declaracoes globais do programa.
+ */
 static ASTNode *global_list(ASTNode *root)
 {
     if (root && root->kind == AST_PROGRAM && root->child_count > 0 &&
@@ -200,18 +206,22 @@ static ASTNode *global_list(ASTNode *root)
     return root;
 }
 
-/* Passagem 1: recolhe funcoes, typedefs, etiquetas e macros. */
+/**
+ * @brief 1a passagem: regista funcoes, typedefs, etiquetas e macros globais.
+ *
+ * Permite referencias antecipadas e recursao mutua entre funcoes.
+ */
 static void collect_globals(SemAnalyzer *a, ASTNode *list)
 {
     for (int i = 0; i < list->child_count; i++) {
         ASTNode *decl = list->children[i];
         switch (decl->kind) {
-            case AST_FUNC_DECL:      register_function(a, decl); break;
-            case AST_TYPEDEF_DECL:   register_typedef(a, decl); break;
+            case AST_FUNC_DECL:        register_function(a, decl); break;
+            case AST_TYPEDEF_DECL:     register_typedef(a, decl); break;
             case AST_DIRECTIVE_DEFINE: register_define(a, decl); break;
             case AST_GENERAL_DECL:
                 if (decl->child_count > 0)
-                    sem_type_from_spec(a, decl->children[0]); /* regista tag */
+                    sem_type_from_spec(a, decl->children[0]);
                 break;
             default:
                 break;
@@ -219,7 +229,9 @@ static void collect_globals(SemAnalyzer *a, ASTNode *list)
     }
 }
 
-/* Passagem 2: verifica corpos de funcoes e variaveis globais em ordem. */
+/**
+ * @brief 2a passagem: verifica corpos de funcoes e variaveis globais em ordem.
+ */
 static void check_globals(SemAnalyzer *a, ASTNode *list)
 {
     for (int i = 0; i < list->child_count; i++) {
@@ -227,11 +239,14 @@ static void check_globals(SemAnalyzer *a, ASTNode *list)
         switch (decl->kind) {
             case AST_FUNC_DECL:  analyze_function(a, decl); break;
             case AST_VAR_DECL:   sem_check_var_decl(a, decl, 1); break;
-            default:             break; /* typedef/tag/directiva ja tratados */
+            default:             break;
         }
     }
 }
 
+/**
+ * @brief Executa a analise semantica sobre a arvore e devolve o numero de erros.
+ */
 int sem_analyze(SemAnalyzer *a, ASTNode *root)
 {
     if (!root)

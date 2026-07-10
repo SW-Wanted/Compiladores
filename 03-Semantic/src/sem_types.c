@@ -3,6 +3,9 @@
 
 #include "sem_types.h"
 
+/**
+ * @brief Constroi um tipo base simples (opcionalmente com nome de etiqueta).
+ */
 SemType sem_type_make(int base, const char *name)
 {
     SemType t;
@@ -16,6 +19,9 @@ SemType sem_type_make(int base, const char *name)
     return t;
 }
 
+/**
+ * @brief Devolve um tipo invalido, usado para suprimir erros em cascata.
+ */
 SemType sem_type_invalid(void)
 {
     SemType t;
@@ -25,16 +31,25 @@ SemType sem_type_invalid(void)
     return t;
 }
 
+/**
+ * @brief Atalho para o tipo `int`.
+ */
 SemType sem_type_int(void)
 {
     return sem_type_make(TOKEN_INT, NULL);
 }
 
+/**
+ * @brief Atalho para o tipo `void`.
+ */
 SemType sem_type_void(void)
 {
     return sem_type_make(TOKEN_VOID, NULL);
 }
 
+/**
+ * @brief Verdadeiro se o tipo e inteiro (char/short/int/long) sem indireccao.
+ */
 int sem_type_is_integer(const SemType *t)
 {
     if (!t->valid || t->pointer_level > 0 || t->array_level > 0)
@@ -50,6 +65,9 @@ int sem_type_is_integer(const SemType *t)
     }
 }
 
+/**
+ * @brief Verdadeiro se o tipo e de virgula flutuante (float/double).
+ */
 int sem_type_is_floating(const SemType *t)
 {
     if (!t->valid || t->pointer_level > 0 || t->array_level > 0)
@@ -57,26 +75,41 @@ int sem_type_is_floating(const SemType *t)
     return t->base == TOKEN_FLOAT || t->base == TOKEN_DOUBLE;
 }
 
+/**
+ * @brief Verdadeiro se o tipo e aritmetico (inteiro ou virgula flutuante).
+ */
 int sem_type_is_arithmetic(const SemType *t)
 {
     return sem_type_is_integer(t) || sem_type_is_floating(t);
 }
 
+/**
+ * @brief Verdadeiro se o tipo e ponteiro ou array.
+ */
 int sem_type_is_pointer(const SemType *t)
 {
     return t->valid && (t->pointer_level > 0 || t->array_level > 0);
 }
 
+/**
+ * @brief Verdadeiro se o tipo e escalar (aritmetico ou ponteiro).
+ */
 int sem_type_is_scalar(const SemType *t)
 {
     return sem_type_is_arithmetic(t) || sem_type_is_pointer(t);
 }
 
+/**
+ * @brief Verdadeiro se o tipo e `void` sem indireccao.
+ */
 int sem_type_is_void(const SemType *t)
 {
     return t->valid && t->base == TOKEN_VOID && t->pointer_level == 0 && t->array_level == 0;
 }
 
+/**
+ * @brief Verdadeiro se o tipo e agregado (struct/union) sem indireccao.
+ */
 int sem_type_is_aggregate(const SemType *t)
 {
     if (!t->valid || t->pointer_level > 0 || t->array_level > 0)
@@ -84,6 +117,9 @@ int sem_type_is_aggregate(const SemType *t)
     return t->base == TOKEN_STRUCT || t->base == TOKEN_UNION;
 }
 
+/**
+ * @brief Ordena os tipos aritmeticos para as conversoes usuais (char < ... < double).
+ */
 int sem_type_rank(const SemType *t)
 {
     switch (t->base) {
@@ -97,6 +133,9 @@ int sem_type_rank(const SemType *t)
     }
 }
 
+/**
+ * @brief Nome textual do tipo base (NULL se for typedef/desconhecido).
+ */
 static const char *base_name(int base)
 {
     switch (base) {
@@ -113,6 +152,9 @@ static const char *base_name(int base)
     }
 }
 
+/**
+ * @brief Escreve uma representacao textual do tipo em @p buf (ex.: "int*", "struct Ponto").
+ */
 void sem_type_to_string(const SemType *t, char *buf, int size)
 {
     char tmp[SEM_MAX_NAME + 32];

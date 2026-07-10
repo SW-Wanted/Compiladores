@@ -3,10 +3,9 @@
 
 #include "sem_check.h"
 
-/* ------------------------------------------------------------------ */
-/*  Declaracao de variaveis                                            */
-/* ------------------------------------------------------------------ */
-
+/**
+ * @brief Declara uma variavel, reportando tipo 'void' e redeclaracao no escopo.
+ */
 static SemSymbol *declare_variable(SemAnalyzer *a, SemType base, ASTNode *declarator)
 {
     const char *name = sem_declarator_name(declarator);
@@ -17,10 +16,9 @@ static SemSymbol *declare_variable(SemAnalyzer *a, SemType base, ASTNode *declar
 
     SemType type = sem_type_from_declarator(base, declarator);
 
-    if (sem_type_is_void(&type)) {
+    if (sem_type_is_void(&type))
         sem_error(&a->diags, line, column,
                   "variavel '%s' nao pode ter tipo 'void'", name);
-    }
 
     SemSymbol symbol;
     memset(&symbol, 0, sizeof(symbol));
@@ -32,15 +30,16 @@ static SemSymbol *declare_variable(SemAnalyzer *a, SemType base, ASTNode *declar
 
     int duplicate = 0;
     SemSymbol *slot = sem_declare(&a->symtab, &symbol, &duplicate);
-    if (duplicate && slot) {
+    if (duplicate && slot)
         sem_error(&a->diags, line, column,
                   "redeclaracao de '%s' no mesmo escopo (declaracao anterior na linha %d)",
                   name, slot->line);
-    }
     return slot;
 }
 
-/* Verifica a compatibilidade do inicializador de um declarador. */
+/**
+ * @brief Verifica a compatibilidade do inicializador de um declarador.
+ */
 static void check_initializer(SemAnalyzer *a, SemSymbol *sym, SemType type, ASTNode *init)
 {
     SemType it = sem_check_expr(a, init);
@@ -52,6 +51,9 @@ static void check_initializer(SemAnalyzer *a, SemSymbol *sym, SemType type, ASTN
     if (sym) sym->is_initialized = 1;
 }
 
+/**
+ * @brief Verifica uma declaracao de variavel, incluindo declaradores multiplos.
+ */
 void sem_check_var_decl(SemAnalyzer *a, ASTNode *node, int is_global)
 {
     (void)is_global;
@@ -66,13 +68,11 @@ void sem_check_var_decl(SemAnalyzer *a, ASTNode *node, int is_global)
 
     int idx = 2;
 
-    /* Inicializador do primeiro declarador (se houver). */
     if (idx < node->child_count && node->children[idx]->kind != AST_DECLARATOR_LIST) {
         check_initializer(a, first, first_type, node->children[idx]);
         idx++;
     }
 
-    /* Declaradores adicionais: `, decl [= init]`. */
     if (idx < node->child_count && node->children[idx]->kind == AST_DECLARATOR_LIST) {
         ASTNode *more = node->children[idx];
         for (int i = 0; i < more->child_count; i++) {
@@ -89,10 +89,9 @@ void sem_check_var_decl(SemAnalyzer *a, ASTNode *node, int is_global)
     }
 }
 
-/* ------------------------------------------------------------------ */
-/*  Condicoes de estruturas de controlo                                */
-/* ------------------------------------------------------------------ */
-
+/**
+ * @brief Verifica que a condicao de uma estrutura de controlo e escalar.
+ */
 static void check_condition(SemAnalyzer *a, ASTNode *expr, const char *keyword)
 {
     if (!expr)
@@ -106,10 +105,11 @@ static void check_condition(SemAnalyzer *a, ASTNode *expr, const char *keyword)
     }
 }
 
-/* ------------------------------------------------------------------ */
-/*  Blocos e instrucoes                                                */
-/* ------------------------------------------------------------------ */
-
+/**
+ * @brief Verifica um bloco; @p new_scope decide se abre um escopo proprio.
+ *
+ * O corpo de uma funcao usa new_scope=0 por partilhar o escopo dos parametros.
+ */
 void sem_check_block(SemAnalyzer *a, ASTNode *block, int new_scope)
 {
     if (!block)
@@ -129,6 +129,9 @@ void sem_check_block(SemAnalyzer *a, ASTNode *block, int new_scope)
         sem_scope_exit(&a->symtab);
 }
 
+/**
+ * @brief Verifica uma instrucao 'switch' (expressao inteira e os seus casos).
+ */
 static void check_switch(SemAnalyzer *a, ASTNode *node)
 {
     if (node->child_count > 0) {
@@ -143,6 +146,12 @@ static void check_switch(SemAnalyzer *a, ASTNode *node)
     a->switch_depth--;
 }
 
+/**
+ * @brief Verifica uma instrucao 'for', com escopo proprio para a inicializacao.
+ *
+ * O parser omite as partes vazias, por isso a ultima filha e sempre o corpo e
+ * as restantes sao inicializacao/condicao/incremento.
+ */
 static void check_for(SemAnalyzer *a, ASTNode *node)
 {
     sem_scope_enter(&a->symtab);
@@ -163,15 +172,16 @@ static void check_for(SemAnalyzer *a, ASTNode *node)
     sem_scope_exit(&a->symtab);
 }
 
+/**
+ * @brief Verifica um 'return' contra o tipo de retorno da funcao em analise.
+ */
 static void check_return(SemAnalyzer *a, ASTNode *node)
 {
-    /* children = [AST_IDENTIFIER "return", (expr)?] */
     ASTNode *expr = node->child_count > 1 ? node->children[1] : NULL;
 
     if (sem_type_is_void(&a->current_return)) {
         if (expr) {
-            SemType t = sem_check_expr(a, expr);
-            (void)t;
+            sem_check_expr(a, expr);
             sem_error(&a->diags, sem_line(node), sem_col(node),
                       "funcao com retorno 'void' nao pode retornar um valor");
         }
@@ -192,6 +202,9 @@ static void check_return(SemAnalyzer *a, ASTNode *node)
     sem_check_assign_compat(a, a->current_return, t, expr, line, col, "return");
 }
 
+/**
+ * @brief Verifica uma instrucao qualquer, despachando por especie de no.
+ */
 void sem_check_stmt(SemAnalyzer *a, ASTNode *node)
 {
     if (!node)
@@ -293,7 +306,7 @@ void sem_check_stmt(SemAnalyzer *a, ASTNode *node)
 
         case AST_GENERAL_DECL:
             if (node->child_count > 0)
-                sem_type_from_spec(a, node->children[0]); /* regista struct/union local */
+                sem_type_from_spec(a, node->children[0]);
             break;
 
         default:

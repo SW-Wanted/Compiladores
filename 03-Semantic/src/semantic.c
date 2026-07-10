@@ -4,10 +4,14 @@
 #include "semantic.h"
 #include "sem_check.h"
 
-/* ------------------------------------------------------------------ */
-/*  Registo de builtins (biblioteca padrao)                            */
-/* ------------------------------------------------------------------ */
+#define ANSI_RED   "\x1b[31m"
+#define ANSI_YELLOW "\x1b[33m"
+#define ANSI_GREEN "\x1b[32m"
+#define ANSI_RESET "\x1b[0m"
 
+/**
+ * @brief Regista uma funcao da biblioteca padrao (variadica, sem verificacao de argumentos).
+ */
 static void builtin_function(SemAnalyzer *a, const char *name, SemType ret)
 {
     SemSymbol sym;
@@ -15,7 +19,7 @@ static void builtin_function(SemAnalyzer *a, const char *name, SemType ret)
     strncpy(sym.name, name, SEM_MAX_NAME - 1);
     sym.kind = SYM_FUNCTION;
     sym.type = ret;
-    sym.is_variadic = 1;   /* nao verificar argumentos de funcoes externas */
+    sym.is_variadic = 1;
     sym.is_defined = 0;
     sym.line = 0;
     sym.column = 0;
@@ -23,6 +27,9 @@ static void builtin_function(SemAnalyzer *a, const char *name, SemType ret)
     sem_declare(&a->symtab, &sym, &duplicate);
 }
 
+/**
+ * @brief Regista uma constante/macro predefinida (ex.: NULL, EOF).
+ */
 static void builtin_const(SemAnalyzer *a, const char *name, SemType type)
 {
     SemSymbol sym;
@@ -35,6 +42,9 @@ static void builtin_const(SemAnalyzer *a, const char *name, SemType type)
     sem_declare(&a->symtab, &sym, &duplicate);
 }
 
+/**
+ * @brief Regista as funcoes e constantes mais comuns de stdio/stdlib/string/math.
+ */
 static void register_builtins(SemAnalyzer *a)
 {
     SemType t_int = sem_type_int();
@@ -44,7 +54,6 @@ static void register_builtins(SemAnalyzer *a)
     SemType t_voidp = sem_type_void(); t_voidp.pointer_level = 1;
     SemType t_charp = sem_type_make(TOKEN_CHAR, NULL); t_charp.pointer_level = 1;
 
-    /* Entrada/saida (stdio.h) */
     const char *io_int[] = { "printf", "scanf", "fprintf", "fscanf", "sprintf",
                              "sscanf", "snprintf", "puts", "fputs", "putchar",
                              "getchar", "putc", "getc", "fclose", "fflush",
@@ -55,7 +64,6 @@ static void register_builtins(SemAnalyzer *a)
     builtin_function(a, "fgets", t_charp);
     builtin_function(a, "gets", t_charp);
 
-    /* Memoria e conversao (stdlib.h) */
     builtin_function(a, "malloc", t_voidp);
     builtin_function(a, "calloc", t_voidp);
     builtin_function(a, "realloc", t_voidp);
@@ -71,7 +79,6 @@ static void register_builtins(SemAnalyzer *a)
     builtin_function(a, "abs", t_int);
     builtin_function(a, "labs", t_long);
 
-    /* Strings (string.h) */
     const char *str_int[] = { "strcmp", "strncmp", "strlen", "memcmp", NULL };
     for (int i = 0; str_int[i]; i++)
         builtin_function(a, str_int[i], t_int);
@@ -81,13 +88,11 @@ static void register_builtins(SemAnalyzer *a)
     for (int i = 0; str_ptr[i]; i++)
         builtin_function(a, str_ptr[i], t_charp);
 
-    /* Matematica (math.h) */
     const char *math_d[] = { "sqrt", "pow", "sin", "cos", "tan", "exp", "log",
                              "log10", "fabs", "floor", "ceil", "fmod", NULL };
     for (int i = 0; math_d[i]; i++)
         builtin_function(a, math_d[i], t_double);
 
-    /* Constantes/macros comuns */
     builtin_const(a, "NULL", t_voidp);
     builtin_const(a, "EOF", t_int);
     builtin_const(a, "stdin", t_voidp);
@@ -95,6 +100,9 @@ static void register_builtins(SemAnalyzer *a)
     builtin_const(a, "stderr", t_voidp);
 }
 
+/**
+ * @brief Inicializa o analisador e regista os builtins da biblioteca padrao.
+ */
 void sem_analyzer_init(SemAnalyzer *a)
 {
     sem_symtab_init(&a->symtab);
@@ -108,10 +116,9 @@ void sem_analyzer_init(SemAnalyzer *a)
     register_builtins(a);
 }
 
-/* ------------------------------------------------------------------ */
-/*  Impressao de resultados                                            */
-/* ------------------------------------------------------------------ */
-
+/**
+ * @brief Nome textual da especie de um simbolo.
+ */
 static const char *kind_name(SymbolKind kind)
 {
     switch (kind) {
@@ -124,6 +131,9 @@ static const char *kind_name(SymbolKind kind)
     }
 }
 
+/**
+ * @brief Imprime a tabela de simbolos declarados no programa (omitindo builtins).
+ */
 void sem_print_symbols(const SemAnalyzer *a)
 {
     printf("\n%-4s %-18s %-11s %-16s %-6s %-6s %-6s\n",
@@ -134,7 +144,7 @@ void sem_print_symbols(const SemAnalyzer *a)
     for (int i = 0; i < a->symtab.count; i++) {
         const SemSymbol *s = &a->symtab.symbols[i];
         if (s->line == 0 && s->kind != SYM_VARIABLE)
-            continue; /* nao listar builtins (linha 0) */
+            continue;
         char type_str[SEM_MAX_NAME + 32];
         sem_type_to_string(&s->type, type_str, sizeof(type_str));
         printf("%-4d %-18s %-11s %-16s %-6d %-6d %-6d\n",
@@ -144,26 +154,29 @@ void sem_print_symbols(const SemAnalyzer *a)
     printf("\n");
 }
 
+/**
+ * @brief Imprime a tabela de diagnosticos (mensagem na ultima coluna, sempre alinhada).
+ */
 void sem_print_diagnostics(const SemAnalyzer *a)
 {
     const SemDiagList *d = &a->diags;
 
     if (d->count == 0) {
-        printf("\x1b[32mAnalise semantica concluida com sucesso: 0 erros, 0 avisos.\x1b[0m\n");
+        printf(ANSI_GREEN "Analise semantica concluida com sucesso: 0 erros, 0 avisos." ANSI_RESET "\n");
         return;
     }
 
     printf("=== DIAGNOSTICOS SEMANTICOS ===\n");
-    printf("%-4s %-9s %-58s %-6s %-6s\n", "#", "TIPO", "MENSAGEM", "LINHA", "COLUNA");
-    printf("%-4s %-9s %-58s %-6s %-6s\n", "----", "---------",
-           "----------------------------------------------------------",
-           "------", "------");
+    printf("%-4s %-7s %-6s %-7s %s\n", "#", "TIPO", "LINHA", "COLUNA", "MENSAGEM");
+    printf("%-4s %-7s %-6s %-7s %s\n", "----", "-------", "------", "-------",
+           "--------------------------------------------------");
     for (int i = 0; i < d->count; i++) {
         const SemDiagnostic *item = &d->items[i];
-        const char *color = item->severity == SEM_SEV_ERROR ? "\x1b[31m" : "\x1b[33m";
+        const char *color = item->severity == SEM_SEV_ERROR ? ANSI_RED : ANSI_YELLOW;
         const char *label = item->severity == SEM_SEV_ERROR ? "ERRO" : "AVISO";
-        printf("%-4d %s%-9s %-58s\x1b[0m %-6d %-6d\n",
-               i + 1, color, label, item->message, item->line, item->column);
+        printf("%-4d %s%-7s%s %-6d %-7d %s%s%s\n",
+               i + 1, color, label, ANSI_RESET, item->line, item->column,
+               color, item->message, ANSI_RESET);
     }
     printf("\nTotal: %d erro(s), %d aviso(s).\n", d->error_count, d->warning_count);
 }
