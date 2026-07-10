@@ -27,6 +27,7 @@ static const char *program_name(const char *path)
 static void print_help(FILE *out, const char *prog)
 {
     fprintf(out, "Fase 03 - Analisador Semantico\n\n");
+    fprintf(out, "Realiza a analise semantica de programas escritos em C.\n\n");
     fprintf(out, "USO\n");
     fprintf(out, "    %s [OPCOES] <arquivo.c>\n\n", prog);
     fprintf(out, "OPCOES\n");
@@ -39,6 +40,8 @@ static void print_help(FILE *out, const char *prog)
     fprintf(out, "    %s teste.c\n", prog);
     fprintf(out, "    %s --all teste.c\n", prog);
     fprintf(out, "    %s --symbols teste.c\n", prog);
+    fprintf(out, "\nOBS\n");
+    fprintf(out, "    Sem opcoes, apenas os diagnosticos semanticos sao exibidos.\n");
 }
 
 /**

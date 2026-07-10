@@ -141,6 +141,7 @@ void sem_print_symbols(const SemAnalyzer *a)
     printf("%-4s %-18s %-11s %-16s %-6s %-6s %-6s\n",
            "----", "------------------", "-----------", "----------------",
            "------", "------", "------");
+    int row = 1;
     for (int i = 0; i < a->symtab.count; i++) {
         const SemSymbol *s = &a->symtab.symbols[i];
         if (s->line == 0 && s->kind != SYM_VARIABLE)
@@ -148,7 +149,7 @@ void sem_print_symbols(const SemAnalyzer *a)
         char type_str[SEM_MAX_NAME + 32];
         sem_type_to_string(&s->type, type_str, sizeof(type_str));
         printf("%-4d %-18s %-11s %-16s %-6d %-6d %-6d\n",
-               i + 1, s->name, kind_name(s->kind), type_str,
+               row++, s->name, kind_name(s->kind), type_str,
                s->scope_level, s->line, s->column);
     }
     printf("\n");
