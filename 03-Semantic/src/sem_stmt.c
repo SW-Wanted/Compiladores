@@ -16,9 +16,9 @@ static SemSymbol *declare_variable(SemAnalyzer *a, SemType base, ASTNode *declar
 
     SemType type = sem_type_from_declarator(base, declarator);
 
-    if (sem_type_is_void(&type))
-        sem_error(&a->diags, line, column,
-                  "variavel '%s' nao pode ter tipo 'void'", name);
+        if (sem_type_is_void(&type))
+            sem_error(&a->diags, line, column,
+                      "Variável '%s' não pode ter tipo 'void'.", name);
 
     SemSymbol symbol;
     memset(&symbol, 0, sizeof(symbol));
@@ -32,7 +32,7 @@ static SemSymbol *declare_variable(SemAnalyzer *a, SemType base, ASTNode *declar
     SemSymbol *slot = sem_declare(&a->symtab, &symbol, &duplicate);
     if (duplicate && slot)
         sem_error(&a->diags, line, column,
-                  "redeclaracao de '%s' no mesmo escopo (declaracao anterior na linha %d)",
+                  "Redeclaração de '%s' no mesmo escopo (declaração anterior na linha %d).",
                   name, slot->line);
     return slot;
 }
@@ -46,7 +46,7 @@ static void check_initializer(SemAnalyzer *a, SemSymbol *sym, SemType type, ASTN
     char ctx[SEM_MAX_NAME + 32];
     int line = sem_line(init), col = sem_col(init);
     if (line < 0) { line = sym ? sym->line : -1; col = sym ? sym->column : -1; }
-    snprintf(ctx, sizeof(ctx), "inicializacao de '%s'", sym ? sym->name : "?");
+    snprintf(ctx, sizeof(ctx), "Inicialização de '%s'", sym ? sym->name : "?");
     sem_check_assign_compat(a, type, it, init, line, col, ctx);
     if (sym) sym->is_initialized = 1;
 }
@@ -101,7 +101,7 @@ static void check_condition(SemAnalyzer *a, ASTNode *expr, const char *keyword)
         char s[SEM_MAX_NAME + 32];
         sem_type_to_string(&t, s, sizeof(s));
         sem_error(&a->diags, sem_line(expr), sem_col(expr),
-                  "a condicao de '%s' deve ser de tipo escalar (obtido '%s')", keyword, s);
+              "A condição de '%s' deve ser de tipo escalar (obtido '%s').", keyword, s);
     }
 }
 
@@ -138,7 +138,7 @@ static void check_switch(SemAnalyzer *a, ASTNode *node)
         SemType t = sem_check_expr(a, node->children[0]);
         if (t.valid && !sem_type_is_integer(&t))
             sem_error(&a->diags, sem_line(node->children[0]), sem_col(node->children[0]),
-                      "a expressao de 'switch' deve ser de tipo inteiro");
+                      "A expressão de 'switch' deve ser de tipo inteiro.");
     }
     a->switch_depth++;
     for (int i = 1; i < node->child_count; i++)
@@ -183,7 +183,7 @@ static void check_return(SemAnalyzer *a, ASTNode *node)
         if (expr) {
             sem_check_expr(a, expr);
             sem_error(&a->diags, sem_line(node), sem_col(node),
-                      "funcao com retorno 'void' nao pode retornar um valor");
+                      "Função com retorno 'void' não pode retornar um valor.");
         }
         return;
     }
@@ -192,7 +192,7 @@ static void check_return(SemAnalyzer *a, ASTNode *node)
         char s[SEM_MAX_NAME + 32];
         sem_type_to_string(&a->current_return, s, sizeof(s));
         sem_warning(&a->diags, sem_line(node), sem_col(node),
-                    "'return' sem valor numa funcao que devia retornar '%s'", s);
+                "'return' sem valor numa função que deveria retornar '%s'.", s);
         return;
     }
 
@@ -269,7 +269,7 @@ void sem_check_stmt(SemAnalyzer *a, ASTNode *node)
                 SemType t = sem_check_expr(a, node->children[0]);
                 if (t.valid && !sem_type_is_integer(&t))
                     sem_error(&a->diags, sem_line(node->children[0]), sem_col(node->children[0]),
-                              "o rotulo 'case' deve ser uma constante inteira");
+                            "O rótulo 'case' deve ser uma constante inteira.");
             }
             for (int i = 1; i < node->child_count; i++) {
                 if (node->children[i]->kind == AST_VAR_DECL)
@@ -291,13 +291,13 @@ void sem_check_stmt(SemAnalyzer *a, ASTNode *node)
         case AST_BREAK_STMT:
             if (a->loop_depth == 0 && a->switch_depth == 0)
                 sem_error(&a->diags, sem_line(node), sem_col(node),
-                          "'break' so pode ser usado dentro de um ciclo ou 'switch'");
+                          "'break' só pode ser usado dentro de um ciclo ou 'switch'.");
             break;
 
         case AST_CONTINUE_STMT:
             if (a->loop_depth == 0)
                 sem_error(&a->diags, sem_line(node), sem_col(node),
-                          "'continue' so pode ser usado dentro de um ciclo");
+                          "'continue' só pode ser usado dentro de um ciclo.");
             break;
 
         case AST_RETURN_STMT:

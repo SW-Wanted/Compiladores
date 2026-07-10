@@ -194,17 +194,17 @@ void sem_check_assign_compat(SemAnalyzer *a, SemType dst, SemType src, ASTNode *
     switch (r) {
         case COMPAT_NARROW:
             sem_warning(&a->diags, line, column,
-                        "%s: conversao implicita de '%s' para '%s' pode perder informacao",
+                        "%s: conversão implícita de '%s' para '%s' pode perder informação.",
                         context, ssrc, sdst);
             break;
         case COMPAT_PTR:
             sem_warning(&a->diags, line, column,
-                        "%s: tipos de ponteiro incompativeis ('%s' e '%s')",
+                        "%s: tipos de ponteiro incompatíveis ('%s' e '%s').",
                         context, ssrc, sdst);
             break;
         case COMPAT_BAD:
             sem_error(&a->diags, line, column,
-                      "%s: incompatibilidade de tipos (nao e possivel usar '%s' onde se espera '%s')",
+                      "%s: incompatibilidade de tipos (não é possível usar '%s' onde se espera '%s').",
                       context, ssrc, sdst);
             break;
         default:
@@ -233,7 +233,7 @@ static SemType check_identifier(SemAnalyzer *a, ASTNode *node)
     SemSymbol *sym = sem_lookup(&a->symtab, node->text);
     if (!sym) {
         sem_error(&a->diags, node->line, node->column,
-                  "variavel '%s' nao declarada", node->text);
+              "Variável '%s' não declarada.", node->text);
         return sem_type_invalid();
     }
     sym->is_used = 1;
@@ -253,12 +253,12 @@ static SemType check_assignment(SemAnalyzer *a, ASTNode *node, const char *op)
 
     if (!sem_is_lvalue(left)) {
         sem_error(&a->diags, sem_line(node), sem_col(node),
-                  "o lado esquerdo de '%s' nao e um lvalue (nao pode receber atribuicao)", op);
+                  "O lado esquerdo de '%s' não é um lvalue (não pode receber atribuição).", op);
         return lt;
     }
 
     if (strcmp(op, "=") == 0) {
-        sem_check_assign_compat(a, lt, rt, right, sem_line(node), sem_col(node), "atribuicao");
+        sem_check_assign_compat(a, lt, rt, right, sem_line(node), sem_col(node), "Atribuição");
     } else {
         int bitwise = op_is(op, "&=") || op_is(op, "|=") || op_is(op, "^=") ||
                       op_is(op, "<<=") || op_is(op, ">>=") || op_is(op, "%=");
@@ -300,25 +300,25 @@ static SemType check_binary(SemAnalyzer *a, ASTNode *node)
     if (is_relational_op(op)) {
         if (sem_type_is_aggregate(&lt) || sem_type_is_aggregate(&rt))
             sem_error(&a->diags, sem_line(node), sem_col(node),
-                      "operador '%s' nao pode comparar tipos agregados (struct/union)", op);
+                      "O operador '%s' não pode comparar tipos agregados (struct/union).", op);
         else if (sem_type_is_pointer(&lt) != sem_type_is_pointer(&rt) &&
                  !is_zero_literal(node->children[0]) && !is_zero_literal(node->children[1]))
             sem_warning(&a->diags, sem_line(node), sem_col(node),
-                        "comparacao '%s' entre ponteiro e inteiro", op);
+                        "Comparação '%s' entre ponteiro e inteiro.", op);
         return sem_type_int();
     }
 
     if (is_bitwise_op(op)) {
         if (!sem_type_is_integer(&lt) || !sem_type_is_integer(&rt))
             sem_error(&a->diags, sem_line(node), sem_col(node),
-                      "operador '%s' requer operandos inteiros", op);
+                      "O operador '%s' requer operandos inteiros.", op);
         return sem_type_int();
     }
 
     if (op_is(op, "%")) {
         if (!sem_type_is_integer(&lt) || !sem_type_is_integer(&rt))
             sem_error(&a->diags, sem_line(node), sem_col(node),
-                      "operador '%%' requer operandos inteiros");
+                      "O operador '%%' requer operandos inteiros.");
         return sem_type_int();
     }
 
@@ -331,13 +331,13 @@ static SemType check_binary(SemAnalyzer *a, ASTNode *node)
         if (op_is(op, "-") && ptr_l && ptr_r)
             return sem_type_int();
         sem_error(&a->diags, sem_line(node), sem_col(node),
-                  "operador '%s' invalido para operandos do tipo ponteiro", op);
+              "O operador '%s' é inválido para operandos do tipo ponteiro.", op);
         return sem_type_invalid();
     }
 
     if (!sem_type_is_arithmetic(&lt) || !sem_type_is_arithmetic(&rt)) {
         sem_error(&a->diags, sem_line(node), sem_col(node),
-                  "operador '%s' requer operandos numericos", op);
+              "O operador '%s' requer operandos numéricos.", op);
         return sem_type_invalid();
     }
     return arith_result(lt, rt);
@@ -373,7 +373,7 @@ static SemType check_unary(SemAnalyzer *a, ASTNode *node)
     if (op_is(op, "&")) {
         if (!sem_is_lvalue(operand))
             sem_error(&a->diags, sem_line(node), sem_col(node),
-                      "operador '&' requer um lvalue");
+                      "O operador '&' requer um lvalue.");
         if (t.valid) t.pointer_level++;
         return t;
     }
@@ -381,7 +381,7 @@ static SemType check_unary(SemAnalyzer *a, ASTNode *node)
     if (op_is(op, "*")) {
         if (t.valid && !sem_type_is_pointer(&t)) {
             sem_error(&a->diags, sem_line(node), sem_col(node),
-                      "nao e possivel desreferenciar um valor que nao e ponteiro");
+                      "Não é possível desreferenciar um valor que não é ponteiro.");
             return sem_type_invalid();
         }
         if (t.array_level > 0) t.array_level--;
@@ -395,23 +395,23 @@ static SemType check_unary(SemAnalyzer *a, ASTNode *node)
     if (op_is(op, "~")) {
         if (t.valid && !sem_type_is_integer(&t))
             sem_error(&a->diags, sem_line(node), sem_col(node),
-                      "operador '~' requer operando inteiro");
+                      "O operador '~' requer operando inteiro.");
         return sem_type_int();
     }
 
     if (op_is(op, "++") || op_is(op, "--")) {
         if (!sem_is_lvalue(operand))
             sem_error(&a->diags, sem_line(node), sem_col(node),
-                      "operador '%s' requer um lvalue", op);
+                      "O operador '%s' requer um lvalue.", op);
         else if (t.valid && !sem_type_is_scalar(&t))
             sem_error(&a->diags, sem_line(node), sem_col(node),
-                      "operador '%s' requer operando numerico ou ponteiro", op);
+                      "O operador '%s' requer operando numérico ou ponteiro.", op);
         return t;
     }
 
     if (t.valid && !sem_type_is_arithmetic(&t)) {
         sem_error(&a->diags, sem_line(node), sem_col(node),
-                  "operador unario '%s' requer operando numerico", op);
+              "O operador unário '%s' requer operando numérico.", op);
         return sem_type_invalid();
     }
     return t;
@@ -439,7 +439,7 @@ static SemType check_call(SemAnalyzer *a, ASTNode *node)
 
     if (!fn) {
         sem_warning(&a->diags, sem_line(callee), sem_col(callee),
-                    "funcao '%s' nao declarada (assumida como externa)", callee->text);
+                "Função '%s' não declarada (assumida como externa).", callee->text);
         for (int i = 0; i < argc; i++)
             sem_check_expr(a, args->children[i]);
         return sem_type_int();
@@ -449,7 +449,7 @@ static SemType check_call(SemAnalyzer *a, ASTNode *node)
 
     if (fn->kind != SYM_FUNCTION) {
         sem_error(&a->diags, sem_line(callee), sem_col(callee),
-                  "'%s' nao e uma funcao", callee->text);
+              "'%s' não é uma função.", callee->text);
         for (int i = 0; i < argc; i++)
             sem_check_expr(a, args->children[i]);
         return sem_type_invalid();
@@ -464,12 +464,12 @@ static SemType check_call(SemAnalyzer *a, ASTNode *node)
 
     if (!fn->is_variadic && argc != fn->param_count) {
         sem_error(&a->diags, sem_line(callee), sem_col(callee),
-                  "funcao '%s' espera %d argumento(s) mas recebeu %d",
-                  fn->name, fn->param_count, argc);
+              "Função '%s' espera %d argumento(s), mas recebeu %d.",
+              fn->name, fn->param_count, argc);
     } else if (!fn->is_variadic) {
         for (int i = 0; i < argc && i < fn->param_count && i < SEM_MAX_PARAMS; i++) {
             char ctx[SEM_MAX_NAME + 32];
-            snprintf(ctx, sizeof(ctx), "argumento %d de '%s'", i + 1, fn->name);
+            snprintf(ctx, sizeof(ctx), "Argumento %d de '%s'", i + 1, fn->name);
             int line = sem_line(args->children[i]);
             int col = sem_col(args->children[i]);
             if (line < 0) { line = sem_line(callee); col = sem_col(callee); }
@@ -496,12 +496,12 @@ static SemType check_subscript(SemAnalyzer *a, ASTNode *node)
         char s[SEM_MAX_NAME + 32];
         sem_type_to_string(&arr, s, sizeof(s));
         sem_error(&a->diags, sem_line(node->children[0]), sem_col(node->children[0]),
-                  "indexacao ('[]') aplicada a tipo nao indexavel '%s'", s);
+              "Indexação ('[]') aplicada a tipo não indexável '%s'.", s);
         return sem_type_invalid();
     }
     if (idx.valid && !sem_type_is_integer(&idx))
         sem_error(&a->diags, sem_line(node->children[1]), sem_col(node->children[1]),
-                  "o indice de um array deve ser um inteiro");
+              "O índice de um array deve ser um inteiro.");
 
     if (arr.array_level > 0) arr.array_level--;
     else if (arr.pointer_level > 0) arr.pointer_level--;
@@ -548,7 +548,7 @@ static SemType check_member(SemAnalyzer *a, ASTNode *node)
     }
 
     sem_error(&a->diags, sem_line(node), sem_col(node),
-              "'%s' nao e um membro de '%s %s'", member ? member : "?",
+              "'%s' não é um membro de '%s %s'.", member ? member : "?",
               tag->is_union ? "union" : "struct", tag->name);
     return sem_type_invalid();
 }
@@ -564,7 +564,7 @@ static SemType check_conditional(SemAnalyzer *a, ASTNode *node)
 
     if (cond.valid && !sem_type_is_scalar(&cond))
         sem_error(&a->diags, sem_line(node), sem_col(node),
-                  "a condicao do operador '?:' deve ser escalar");
+              "A condição do operador '?:' deve ser escalar.");
 
     if (sem_type_is_arithmetic(&a_t) && sem_type_is_arithmetic(&b_t))
         return arith_result(a_t, b_t);

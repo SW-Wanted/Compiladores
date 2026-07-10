@@ -59,12 +59,12 @@ static void register_function(SemAnalyzer *a, ASTNode *func)
     if (existing) {
         if (existing->kind != SYM_FUNCTION) {
             sem_error(&a->diags, symbol.line, symbol.column,
-                      "'%s' ja foi declarado como um identificador diferente", name);
+                      "'%s' já foi declarado como um identificador diferente.", name);
             return;
         }
         if (existing->is_defined && has_body) {
             sem_error(&a->diags, symbol.line, symbol.column,
-                      "redefinicao da funcao '%s' (definida na linha %d)",
+                      "Redefinição da função '%s' (definida na linha %d).",
                       name, existing->line);
             return;
         }
@@ -107,7 +107,7 @@ static void register_typedef(SemAnalyzer *a, ASTNode *node)
     SemSymbol *slot = sem_declare(&a->symtab, &symbol, &duplicate);
     if (duplicate && slot)
         sem_error(&a->diags, symbol.line, symbol.column,
-                  "redeclaracao do tipo '%s'", name);
+              "Redeclaração do tipo '%s'.", name);
 }
 
 /**
@@ -186,7 +186,7 @@ static void analyze_function(SemAnalyzer *a, ASTNode *func)
         SemSymbol *slot = sem_declare(&a->symtab, &psym, &duplicate);
         if (duplicate && slot)
             sem_error(&a->diags, psym.line, psym.column,
-                      "parametro '%s' declarado mais de uma vez", pname);
+                      "Parâmetro '%s' declarado mais de uma vez.", pname);
     }
 
     sem_check_block(a, body, 0);
