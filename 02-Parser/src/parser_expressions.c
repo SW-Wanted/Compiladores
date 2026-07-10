@@ -295,7 +295,7 @@ ASTNode *parse_primario(Parser *parser)
         parser->current.type == TOKEN_FLOAT_LITERAL || parser->current.type == TOKEN_CHAR_LITERAL ||
         parser->current.type == TOKEN_STRING_LITERAL) {
         ASTNodeKind kind = parser->current.type == TOKEN_IDENTIFIER ? AST_IDENTIFIER : AST_LITERAL;
-        ASTNode *node = ast_leaf(kind, parser->current.lexeme);
+        ASTNode *node = ast_new(kind, parser->current.lexeme, parser->current.line, parser->current.column);
         parser_next(parser);
         return node;
     }

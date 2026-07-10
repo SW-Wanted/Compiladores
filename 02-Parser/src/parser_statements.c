@@ -247,7 +247,7 @@ ASTNode *parse_case_item(Parser *parser)
 {
     if (parser->current.type == TOKEN_CASE) {
         ASTNode *node = ast_new(AST_CASE_STMT, NULL, -1, -1);
-        parser_expect(parser, TOKEN_CASE, AST_IDENTIFIER);
+        parser_free_ast(parser_expect(parser, TOKEN_CASE, AST_IDENTIFIER));
         ast_add_child(node, parse_expressao(parser));
         parser_expect(parser, TOKEN_COLON, AST_ERROR);
         while (parser->current.type != TOKEN_CASE && parser->current.type != TOKEN_DEFAULT &&
@@ -258,7 +258,7 @@ ASTNode *parse_case_item(Parser *parser)
     }
     if (parser->current.type == TOKEN_DEFAULT) {
         ASTNode *node = ast_new(AST_DEFAULT_STMT, NULL, -1, -1);
-        parser_expect(parser, TOKEN_DEFAULT, AST_IDENTIFIER);
+        parser_free_ast(parser_expect(parser, TOKEN_DEFAULT, AST_IDENTIFIER));
         parser_expect(parser, TOKEN_COLON, AST_ERROR);
         while (parser->current.type != TOKEN_CASE && parser->current.type != TOKEN_DEFAULT &&
                parser->current.type != TOKEN_RBRACE && parser->current.type != TOKEN_EOF) {
