@@ -14,10 +14,10 @@ typedef struct {
 
 static void print_usage(const char *program_name)
 {
-    fprintf(stderr, "Uso: %s [opcoes] <arquivo.c>\n", program_name);
-    fprintf(stderr, "Opcoes:\n");
+    fprintf(stderr, "Uso: %s [opções] <arquivo.c>\n", program_name);
+    fprintf(stderr, "Opções:\n");
     fprintf(stderr, "  -a, --ast       mostrar AST\n");
-    fprintf(stderr, "  -s, --symbols   mostrar tabela de simbolos\n");
+    fprintf(stderr, "  -s, --symbols   mostrar tabela de símbolos\n");
     fprintf(stderr, "  -e, --errors    mostrar tabela de erros\n");
     fprintf(stderr, "  -l, --lexemes   mostrar lexemas\n");
     fprintf(stderr, "  -A, --all       mostrar tudo\n");
@@ -32,7 +32,7 @@ static void print_ast_view(const Parser *parser)
 
 static void print_symbols_view(const Parser *parser)
 {
-    printf("=== TABELA DE SIMBOLOS ===\n");
+    printf("=== TABELA DE SÍMBOLOS ===\n");
     scope_table_print(&parser->scope_table);
 }
 
@@ -131,7 +131,7 @@ char *read_file(const char *path)
 {
     FILE *f = fopen(path, "r");
     if (!f) {
-        fprintf(stderr, "Erro: nao foi possivel abrir '%s'\n", path);
+        fprintf(stderr, "Erro: não foi possível abrir '%s'\n", path);
         return NULL;
     }
 
@@ -141,7 +141,7 @@ char *read_file(const char *path)
 
     char *buffer = malloc(size + 1);
     if (!buffer) {
-        fprintf(stderr, "Erro: memoria insuficiente\n");
+        fprintf(stderr, "Erro: memória insuficiente\n");
         fclose(f);
         return NULL;
     }
